@@ -281,8 +281,9 @@ namespace JRadius.Extended.Tls
 
                                     break;
                                 }
-                            //default:
-                            //    this.FailWithError(AL_fatal, AP_unexpected_message);
+                            default:
+                                this.FailWithError(AL_fatal, AP_unexpected_message);
+                                break;
                         }
 
                         connection_state = CS_SERVER_CERTIFICATE_RECEIVED;
@@ -326,8 +327,9 @@ namespace JRadius.Extended.Tls
                              */
                             this.appDataReady = true;
                             break;
-                        //default:
-                        //    this.FailWithError(AL_fatal, AP_unexpected_message);
+                        default:
+                            this.FailWithError(AL_fatal, AP_unexpected_message);
+                            break;
                     }
                     break;
                 case HP_SERVER_HELLO:
