@@ -26,21 +26,14 @@
     <sourceDirectory>target/dictionary-src</sourceDirectory>
     <plugins>
       <plugin>
-	<groupId>org.apache.maven.plugins</groupId>
-	<artifactId>maven-compiler-plugin</artifactId>
-	<configuration>
-	  <source>1.5</source>
-	  <target>1.5</target>
-	</configuration>
-      </plugin>
-      <plugin>
 	<artifactId>maven-antrun-plugin</artifactId>
+    <version>3.1.0</version>
 	<executions>
 	  <execution>
 	    <phase>generate-sources</phase>
 	    <configuration>            
-	      <tasks>
-		<java fork="false" classname="net.jradius.freeradius.RadiusDictionary" maxmemory="800m" failonerror="true"> 
+	      <target>
+		<java fork="true" classname="net.jradius.freeradius.RadiusDictionary" maxmemory="800m" failonerror="true">
 		  <classpath>
 		    <path refid="maven.compile.classpath" />
 		  </classpath>
@@ -48,7 +41,7 @@
 		  <arg value="${basedir}/../freeradius/dict" />
 		  <arg value="${basedir}/target/dictionary-src" />
 		</java>
-	      </tasks>
+	      </target>
 	    </configuration>
 	    <goals>
 	      <goal>run</goal>

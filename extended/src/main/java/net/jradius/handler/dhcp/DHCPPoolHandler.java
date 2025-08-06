@@ -17,13 +17,11 @@
  * Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  *
  */
-
 package net.jradius.handler.dhcp;
 
+import java.io.Serializable;
 import java.net.InetAddress;
-
-import org.springframework.beans.factory.InitializingBean;
-
+import java.time.Duration;
 import net.jradius.dictionary.vsa_dhcp.Attr_DHCPClientHardwareAddress;
 import net.jradius.dictionary.vsa_dhcp.Attr_DHCPClientIPAddress;
 import net.jradius.dictionary.vsa_dhcp.Attr_DHCPDHCPServerIdentifier;
@@ -46,8 +44,13 @@ import net.jradius.packet.DHCPRequest;
 import net.jradius.packet.RadiusPacket;
 import net.jradius.packet.attribute.AttributeList;
 import net.jradius.server.JRadiusRequest;
-import net.sf.ehcache.Cache;
-import net.sf.ehcache.CacheManager;
+import org.ehcache.Cache;
+import org.ehcache.CacheManager;
+import org.ehcache.config.CacheConfiguration;
+import org.ehcache.config.builders.CacheConfigurationBuilder;
+import org.ehcache.config.builders.ExpiryPolicyBuilder;
+import org.ehcache.config.builders.ResourcePoolsBuilder;
+import org.springframework.beans.factory.InitializingBean;
 
 /**
  * Simple DHCP IP Pool Handler for FreeRADIUS. 
@@ -57,7 +60,7 @@ import net.sf.ehcache.CacheManager;
 public class DHCPPoolHandler extends PacketHandlerChain implements InitializingBean
 {
 	private CacheManager cacheManager;
-	private Cache cache;
+	private Cache<Serializable, Serializable> cache;
 
     public DHCPPoolHandler()
     {
@@ -82,8 +85,11 @@ public class DHCPPoolHandler extends PacketHandlerChain implements InitializingB
 
             if (cache == null)
             {
-            	cache = new Cache("ippool", 10000, true, false, _pool.getLeaseTime() + 60, _pool.getLeaseTime() + 30);
-	            cacheManager.addCache(cache);
+                CacheConfiguration<Serializable, Serializable> cacheConfig = CacheConfigurationBuilder.newCacheConfigurationBuilder(
+                    Serializable.class, Serializable.class, ResourcePoolsBuilder.heap(10000))
+                    .withExpiry(ExpiryPolicyBuilder.timeToLiveExpiration(Duration.ofSeconds(_pool.getLeaseTime() + 60)))
+                    .build();
+                cache = cacheManager.createCache("ippool", cacheConfig);
             }
             
             _pool.setLeases(cache);
@@ -214,7 +220,7 @@ public class DHCPPoolHandler extends PacketHandlerChain implements InitializingB
 		this.cacheManager = cacheManager;
 	}
 
-	public void setCache(Cache cache) {
+	public void setCache(Cache<Serializable, Serializable> cache) {
 		this.cache = cache;
 	}
 }

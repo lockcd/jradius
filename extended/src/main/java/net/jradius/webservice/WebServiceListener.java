@@ -18,7 +18,6 @@
  * 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  *
  */
-
 package net.jradius.webservice;
 
 import java.io.DataInputStream;
@@ -28,20 +27,23 @@ import java.net.SocketException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
+import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.StringTokenizer;
-
 import net.jradius.server.JRadiusEvent;
 import net.jradius.server.ListenerRequest;
 import net.jradius.server.TCPListener;
-import net.sf.ehcache.Cache;
-import net.sf.ehcache.CacheException;
-import net.sf.ehcache.CacheManager;
-import net.sf.ehcache.Ehcache;
-import net.sf.ehcache.Element;
-import net.sf.ehcache.event.CacheEventListener;
-
+import org.ehcache.Cache;
+import org.ehcache.CacheManager;
+import org.ehcache.config.CacheConfiguration;
+import org.ehcache.config.builders.CacheConfigurationBuilder;
+import org.ehcache.config.builders.CacheManagerBuilder;
+import org.ehcache.config.builders.ExpiryPolicyBuilder;
+import org.ehcache.config.builders.ResourcePoolsBuilder;
+import org.ehcache.event.CacheEvent;
+import org.ehcache.event.CacheEventListener;
+import org.ehcache.event.EventType;
 import org.springframework.beans.factory.InitializingBean;
 
 
@@ -50,12 +52,12 @@ import org.springframework.beans.factory.InitializingBean;
  *
  * @author David Bird
  */
-public class WebServiceListener extends TCPListener implements InitializingBean, CacheEventListener
+public class WebServiceListener extends TCPListener implements InitializingBean, CacheEventListener<String, WebServiceRequestObject>
 {
     protected String cacheName = "ws-requests";
-    protected Map requestMap;
+    protected Map<String, WebServiceRequestObject> requestMap;
     protected CacheManager cacheManager;
-    protected Ehcache requestCache;
+    protected Cache<String, WebServiceRequestObject> requestCache;
     protected Integer timeToLive;
     protected Integer idleTime;
     
@@ -154,24 +156,21 @@ public class WebServiceListener extends TCPListener implements InitializingBean,
         if (requestMap != null)
             requestMap.put(obj.getKey(), obj);
         else
-            requestCache.put(new Element(obj.getKey(), obj));
+            requestCache.put(obj.getKey(), obj);
     }
     
     public WebServiceRequestObject get(String username)
     {
         if (requestMap != null)
         {
-            return (WebServiceRequestObject)requestMap.get(username);
+            return requestMap.get(username);
         }
-        Element e = requestCache.get(username);
-        return e == null ? null : (WebServiceRequestObject)e.getValue();
+        return requestCache.get(username);
     }
 
-    private void deleteElement(Element e)
+    private void deleteObject(WebServiceRequestObject o)
     {
-    	if (e == null) return;
-        WebServiceRequestObject o = (WebServiceRequestObject)e.getValue();
-        if (o == null) return;
+	if (o == null) return;
         o.delete();
     }
     
@@ -180,47 +179,17 @@ public class WebServiceListener extends TCPListener implements InitializingBean,
         return super.clone();
     }
 
-    public void dispose()
-    {
-    }
-
-    public void notifyElementEvicted(Ehcache cache, Element element)
-    {
-        deleteElement(element);
-    }
-
-    public void notifyElementExpired(Ehcache cache, Element element)
-    {
-        deleteElement(element);
-    }
-
-    public void notifyElementPut(Ehcache cache, Element element) throws CacheException
-    {
-    }
-
-    public void notifyElementRemoved(Ehcache cache, Element element) throws CacheException
-    {
-        deleteElement(element);
-    }
-
-    public void notifyElementUpdated(Ehcache cache, Element element) throws CacheException
-    {
-    }
-
-    public void notifyRemoveAll(Ehcache cache)
-    {
-    	// -- Potentially thread unsafe -- just don't call removeAll()
-    	//List keys = cache.getKeys();
-    	//for (Iterator i=keys.iterator(); i.hasNext();)
-    	//{
-    	//deleteElement(cache.get(i.next()));
-    	//}
+    @Override
+    public void onEvent(CacheEvent<? extends String, ? extends WebServiceRequestObject> event) {
+        if (event.getType() == EventType.EXPIRED || event.getType() == EventType.REMOVED || event.getType() == EventType.EVICTED) {
+            deleteObject(event.getOldValue());
+        }
     }
 
     public void afterPropertiesSet() throws Exception
     {
-        if (idleTime == null) idleTime = new Integer(120);
-        if (timeToLive == null) timeToLive = new Integer(180);
+        if (idleTime == null) idleTime = 120;
+        if (timeToLive == null) timeToLive = 180;
         if (requestMap != null) return;
         
         if (requestCache == null) 
@@ -230,16 +199,19 @@ public class WebServiceListener extends TCPListener implements InitializingBean,
             	throw new RuntimeException("cacheManager required");
             }
 
-            requestCache = cacheManager.getCache(cacheName);
+            requestCache = cacheManager.getCache(cacheName, String.class, WebServiceRequestObject.class);
         
             if (requestCache == null)
             {
-                requestCache = new Cache(cacheName, 2000, true, false, timeToLive.intValue(), idleTime.intValue());
-                cacheManager.addCache(requestCache);
+                CacheConfiguration<String, WebServiceRequestObject> cacheConfig = CacheConfigurationBuilder.newCacheConfigurationBuilder(
+                    String.class, WebServiceRequestObject.class, ResourcePoolsBuilder.heap(2000))
+                    .withExpiry(ExpiryPolicyBuilder.timeToLiveExpiration(Duration.ofSeconds(timeToLive)))
+                    .build();
+                requestCache = cacheManager.createCache(cacheName, cacheConfig);
             }
         }
 
-        requestCache.getCacheEventNotificationService().registerListener(this);
+        requestCache.getRuntimeConfiguration().registerCacheEventListener(this, org.ehcache.event.EventOrdering.UNORDERED, org.ehcache.event.EventFiring.ASYNCHRONOUS, EventType.EVICTED, EventType.EXPIRED, EventType.REMOVED);
     }
 
     public CacheManager getCacheManager()
@@ -272,12 +244,12 @@ public class WebServiceListener extends TCPListener implements InitializingBean,
         this.idleTime = idleTime;
     }
     
-    public Ehcache getRequestCache()
+    public Cache<String, WebServiceRequestObject> getRequestCache()
     {
         return requestCache;
     }
     
-    public void setRequestCache(Ehcache requestCache)
+    public void setRequestCache(Cache<String, WebServiceRequestObject> requestCache)
     {
         this.requestCache = requestCache;
     }
@@ -292,12 +264,12 @@ public class WebServiceListener extends TCPListener implements InitializingBean,
         this.timeToLive = timeToLive;
     }
 
-    public Map getRequestMap()
+    public Map<String, WebServiceRequestObject> getRequestMap()
     {
         return requestMap;
     }
 
-    public void setRequestMap(Map requestMap)
+    public void setRequestMap(Map<String, WebServiceRequestObject> requestMap)
     {
         this.requestMap = requestMap;
     }

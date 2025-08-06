@@ -595,7 +595,7 @@ public class EAPTLSAuthenticator extends EAPAuthenticator
         AlgorithmIdentifier     algId = keyInfo.getPrivateKeyAlgorithm();
         if (algId.getAlgorithm().equals(PKCSObjectIdentifiers.rsaEncryption))
         {
-            RSAPrivateKeyStructure  keyStructure = new RSAPrivateKeyStructure((ASN1Sequence)keyInfo.getPrivateKey());
+            RSAPrivateKeyStructure keyStructure = RSAPrivateKeyStructure.getInstance(keyInfo.parsePrivateKey());
 
             return new RSAPrivateCrtKeyParameters(
                                         keyStructure.getModulus(),
@@ -680,7 +680,7 @@ public class EAPTLSAuthenticator extends EAPAuthenticator
                                             ecP.getH(),
                                             ecP.getSeed());
             }
-            ECPrivateKey ec = ECPrivateKey.getInstance(keyInfo.getPrivateKeyAlgorithm());
+            ECPrivateKey ec = ECPrivateKey.getInstance(keyInfo.parsePrivateKey());
 
             return new ECPrivateKeyParameters(ec.getKey(), dParams);
         }

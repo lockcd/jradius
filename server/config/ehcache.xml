@@ -1,23 +1,39 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<ehcache>
-    
-    <!-- store disk cache in default java tmp dir -->
-    <diskStore path="java.io.tmpdir"/>
+<config xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance'
+        xmlns='http://www.ehcache.org/v3'
+        xsi:schemaLocation="http://www.ehcache.org/v3 http://www.ehcache.org/schema/ehcache-core-3.0.xsd">
 
-    <!-- define a default cache. -->
-    <defaultCache
-        maxElementsInMemory="10000"
-        eternal="false"
-        timeToIdleSeconds="300"
-        timeToLiveSeconds="600"
-        overflowToDisk="false"
-        diskPersistent="false"
-        diskExpiryThreadIntervalSeconds="120" />
+    <!--
+        NOTE: diskStore is no longer configured globally. It's configured per-cache.
+        The old config had overflowToDisk="false" so we will only use heap storage.
+    -->
 
-    <cache name="otpRequests" 
-        maxElementsInMemory="1000" 
-        eternal="false" 
-        timeToLiveSeconds="180" 
-        overflowToDisk="false"/> 
+    <cache-template name="default">
+        <key-type>java.lang.String</key-type>
+        <value-type>java.lang.Object</value-type>
+        <expiry>
+            <ttl unit="seconds">600</ttl>
+            <tti unit="seconds">300</tti>
+        </expiry>
+        <resources>
+            <heap unit="entries">10000</heap>
+        </resources>
+    </cache-template>
 
-</ehcache>
+    <cache alias="otpRequests" uses-template="default">
+        <expiry>
+            <!-- otpRequests only has timeToLive, not timeToIdle -->
+            <ttl unit="seconds">180</ttl>
+        </expiry>
+        <resources>
+            <heap unit="entries">1000</heap>
+        </resources>
+    </cache>
+
+    <!--
+        The session caches (e.g., "session.Simple-Session") are created dynamically.
+        The code will need to be updated to create them using a template or default config.
+        The defaultCache from v2 is best modeled as a template in v3.
+        The session manager will likely need to be updated to create caches if they don't exist,
+        using the "default" template.
+    -->
+</config>
