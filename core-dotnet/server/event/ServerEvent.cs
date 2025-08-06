@@ -1,4 +1,4 @@
-namespace net.jradius.core.server.event
+namespace net.jradius.core.server.@event
 {
     public class ServerEvent
     {

@@ -4,7 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using net.jradius.core.handler;
-using net.jradius.core.server.event;
+using net.jradius.core.server.@event;
 
 namespace net.jradius.core.server
 {

@@ -1,0 +1,13 @@
+/app/core-dotnet/obj/Debug/net8.0/JRadius.Core.GeneratedMSBuildEditorConfig.editorconfig
+/app/core-dotnet/obj/Debug/net8.0/JRadius.Core.AssemblyInfoInputs.cache
+/app/core-dotnet/obj/Debug/net8.0/JRadius.Core.AssemblyInfo.cs
+/app/core-dotnet/obj/Debug/net8.0/JRadius.Core.csproj.CoreCompileInputs.cache
+/app/core-dotnet/obj/Debug/net8.0/JRadius.Core.sourcelink.json
+/app/core-dotnet/obj/Debug/net8.0/JRadius.Core.csproj.AssemblyReference.cache
+/app/core-dotnet/bin/Debug/net8.0/JRadius.Core.deps.json
+/app/core-dotnet/bin/Debug/net8.0/JRadius.Core.dll
+/app/core-dotnet/bin/Debug/net8.0/JRadius.Core.pdb
+/app/core-dotnet/obj/Debug/net8.0/JRadius.Core.dll
+/app/core-dotnet/obj/Debug/net8.0/refint/JRadius.Core.dll
+/app/core-dotnet/obj/Debug/net8.0/JRadius.Core.pdb
+/app/core-dotnet/obj/Debug/net8.0/ref/JRadius.Core.dll

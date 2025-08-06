@@ -1,0 +1,138 @@
+{
+  "format": 1,
+  "restore": {
+    "/app/DictionaryGenerator/DictionaryGenerator.csproj": {}
+  },
+  "projects": {
+    "/app/DictionaryGenerator/DictionaryGenerator.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/app/DictionaryGenerator/DictionaryGenerator.csproj",
+        "projectName": "DictionaryGenerator",
+        "projectPath": "/app/DictionaryGenerator/DictionaryGenerator.csproj",
+        "packagesPath": "/home/jules/.nuget/packages/",
+        "outputPath": "/app/DictionaryGenerator/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/home/jules/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net8.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net8.0": {
+            "targetAlias": "net8.0",
+            "projectReferences": {
+              "/app/core-dotnet/JRadius.Core.csproj": {
+                "projectPath": "/app/core-dotnet/JRadius.Core.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        }
+      },
+      "frameworks": {
+        "net8.0": {
+          "targetAlias": "net8.0",
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/usr/share/dotnet/sdk/8.0.413/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "/app/core-dotnet/JRadius.Core.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/app/core-dotnet/JRadius.Core.csproj",
+        "projectName": "JRadius.Core",
+        "projectPath": "/app/core-dotnet/JRadius.Core.csproj",
+        "packagesPath": "/home/jules/.nuget/packages/",
+        "outputPath": "/app/core-dotnet/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/home/jules/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net8.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net8.0": {
+            "targetAlias": "net8.0",
+            "projectReferences": {}
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        }
+      },
+      "frameworks": {
+        "net8.0": {
+          "targetAlias": "net8.0",
+          "dependencies": {
+            "Microsoft.Extensions.Logging": {
+              "target": "Package",
+              "version": "[9.0.8, )"
+            },
+            "System.Collections.Concurrent": {
+              "target": "Package",
+              "version": "[4.3.0, )"
+            }
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/usr/share/dotnet/sdk/8.0.413/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    }
+  }
+}
