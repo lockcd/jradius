@@ -6,8 +6,5 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
-  <ItemGroup>
-    <Compile Include="generated\*.cs" />
-  </ItemGroup>
 
 </Project>

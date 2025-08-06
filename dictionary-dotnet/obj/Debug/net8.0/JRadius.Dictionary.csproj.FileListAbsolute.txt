@@ -1,0 +1,5 @@
+/app/dictionary-dotnet/obj/Debug/net8.0/JRadius.Dictionary.GeneratedMSBuildEditorConfig.editorconfig
+/app/dictionary-dotnet/obj/Debug/net8.0/JRadius.Dictionary.AssemblyInfoInputs.cache
+/app/dictionary-dotnet/obj/Debug/net8.0/JRadius.Dictionary.AssemblyInfo.cs
+/app/dictionary-dotnet/obj/Debug/net8.0/JRadius.Dictionary.csproj.CoreCompileInputs.cache
+/app/dictionary-dotnet/obj/Debug/net8.0/JRadius.Dictionary.sourcelink.json

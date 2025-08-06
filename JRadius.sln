@@ -23,6 +23,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "JRadius.Server", "server-do
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DictionaryGenerator", "DictionaryGenerator\DictionaryGenerator.csproj", "{6BF49C2F-861E-4BF7-B72E-4150B35EE539}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "JRadius.Extended.Tests", "extended-dotnet-tests\JRadius.Extended.Tests.csproj", "{A65BC360-A18F-4651-AD21-EEF9A3860C6B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -72,5 +74,9 @@ Global
 		{6BF49C2F-861E-4BF7-B72E-4150B35EE539}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6BF49C2F-861E-4BF7-B72E-4150B35EE539}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6BF49C2F-861E-4BF7-B72E-4150B35EE539}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A65BC360-A18F-4651-AD21-EEF9A3860C6B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A65BC360-A18F-4651-AD21-EEF9A3860C6B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A65BC360-A18F-4651-AD21-EEF9A3860C6B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A65BC360-A18F-4651-AD21-EEF9A3860C6B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

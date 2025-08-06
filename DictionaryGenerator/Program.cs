@@ -50,7 +50,7 @@ namespace DictionaryGenerator
                     var parts = line.Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
                     if (parts.Length >= 3)
                     {
-                        var attributeName = parts[1];
+                        var attributeName = parts[1].Replace("-", "_");
                         var attributeId = parts[2];
                         sb.AppendLine($"        public const int {attributeName} = {attributeId};");
                     }

@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("JRadius.Core")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+996f73eff4edb52e6e49585d1a3cd6bec62bbade")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+8b8a961e73b4201bc914bc01e14379d1f921a80d")]
 [assembly: System.Reflection.AssemblyProductAttribute("JRadius.Core")]
 [assembly: System.Reflection.AssemblyTitleAttribute("JRadius.Core")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

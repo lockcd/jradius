@@ -1,8 +1,8 @@
-namespace net.jradius.dictionary
+namespace JRadius.Dictionary.v2
 {
     public class dictionary
     {
-        public const int Cabletron-Protocol-Enable = 201;
-        public const int Cabletron-Protocol-Callable = 202;
+        public const int Cabletron_Protocol_Enable = 201;
+        public const int Cabletron_Protocol_Callable = 202;
     }
 }

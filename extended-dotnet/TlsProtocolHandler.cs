@@ -260,5 +260,919 @@ namespace JRadius.Extended.Tls
             }
             while (read);
         }
+
+        private void ProcessHandshakeMessage(short type, byte[] buf)
+        {
+            MemoryStream is = new MemoryStream(buf);
+
+            switch (type)
+            {
+                case HP_CERTIFICATE:
+                    {
+                        switch (connection_state)
+                        {
+                            case CS_SERVER_HELLO_RECEIVED:
+                                {
+                                    // Parse the Certificate message and send to cipher suite
+
+                                    Certificate serverCertificate = Certificate.parse(is);
+
+                                    AssertEmpty(is);
+
+                                    this.keyExchange.ProcessServerCertificate(serverCertificate);
+
+                                    break;
+                                }
+                            default:
+                                this.FailWithError(AL_fatal, AP_unexpected_message);
+                        }
+
+                        connection_state = CS_SERVER_CERTIFICATE_RECEIVED;
+                        break;
+                    }
+                case HP_FINISHED:
+                    switch (connection_state)
+                    {
+                        case CS_SERVER_CHANGE_CIPHER_SPEC_RECEIVED:
+                            /*
+                             * Read the checksum from the finished message, it has always 12
+                             * bytes.
+                             */
+                            byte[] serverVerifyData = new byte[12];
+                            TlsUtils.ReadFully(serverVerifyData, is);
+
+                            AssertEmpty(is);
+
+                            /*
+                             * Calculate our own checksum.
+                             */
+                            byte[] expectedServerVerifyData = TlsUtils.PRF(
+                                securityParameters.masterSecret, "server finished",
+                                rs.getCurrentHash(), 12);
+
+                            /*
+                             * Compare both checksums.
+                             */
+                            if (!Arrays.ConstantTimeAreEqual(expectedServerVerifyData, serverVerifyData))
+                            {
+                                /*
+                                 * Wrong checksum in the finished message.
+                                 */
+                                this.FailWithError(AL_fatal, AP_handshake_failure);
+                            }
+
+                            connection_state = CS_DONE;
+
+                            /*
+                             * We are now ready to receive application data.
+                             */
+                            this.appDataReady = true;
+                            break;
+                        default:
+                            this.FailWithError(AL_fatal, AP_unexpected_message);
+                    }
+                    break;
+                case HP_SERVER_HELLO:
+                    switch (connection_state)
+                    {
+                        case CS_CLIENT_HELLO_SEND:
+                            /*
+                             * Read the server hello message
+                             */
+                            TlsUtils.CheckVersion(is, this);
+
+                            /*
+                             * Read the server random
+                             */
+                            securityParameters.serverRandom = new byte[32];
+                            TlsUtils.ReadFully(securityParameters.serverRandom, is);
+
+                            byte[] sessionID = TlsUtils.ReadOpaque8(is);
+                            if (sessionID.Length > 32)
+                            {
+                                this.FailWithError(TlsProtocolHandler.AL_fatal,
+                                    TlsProtocolHandler.AP_illegal_parameter);
+                            }
+
+                            this.tlsClient.NotifySessionID(sessionID);
+
+                            /*
+                             * Find out which ciphersuite the server has chosen and check that
+                             * it was one of the offered ones.
+                             */
+                            int selectedCipherSuite = TlsUtils.ReadUint16(is);
+                            if (!WasCipherSuiteOffered(selectedCipherSuite))
+                            {
+                                this.FailWithError(TlsProtocolHandler.AL_fatal,
+                                    TlsProtocolHandler.AP_illegal_parameter);
+                            }
+
+                            this.tlsClient.NotifySelectedCipherSuite(selectedCipherSuite);
+
+                            /*
+                             * We support only the null compression which means no
+                             * compression.
+                             */
+                            short compressionMethod = TlsUtils.ReadUint8(is);
+                            if (compressionMethod != 0)
+                            {
+                                this.FailWithError(TlsProtocolHandler.AL_fatal,
+                                    TlsProtocolHandler.AP_illegal_parameter);
+                            }
+
+                            /*
+                             * RFC4366 2.2 The extended server hello message format MAY be
+                             * sent in place of the server hello message when the client has
+                             * requested extended functionality via the extended client hello
+                             * message specified in Section 2.1.
+                             */
+                            if (extendedClientHello)
+                            {
+                                // Integer -> byte[]
+                                Hashtable serverExtensions = new Hashtable();
+
+                                if (is.Position < is.Length)
+                                {
+                                    // Process extensions from extended server hello
+                                    byte[] extBytes = TlsUtils.ReadOpaque16(is);
+
+                                    MemoryStream ext = new MemoryStream(extBytes);
+                                    while (ext.Position < ext.Length)
+                                    {
+                                        int extType = TlsUtils.ReadUint16(ext);
+                                        byte[] extValue = TlsUtils.ReadOpaque16(ext);
+
+                                        serverExtensions.Add(extType, extValue);
+                                    }
+                                }
+
+                                // TODO[RFC 5746] If renegotiation_info was sent in client hello, check here
+
+                                tlsClient.ProcessServerExtensions(serverExtensions);
+                            }
+
+                            AssertEmpty(is);
+
+                            this.keyExchange = tlsClient.CreateKeyExchange();
+
+                            connection_state = CS_SERVER_HELLO_RECEIVED;
+                            break;
+                        default:
+                            this.FailWithError(AL_fatal, AP_unexpected_message);
+                    }
+                    break;
+                case HP_SERVER_HELLO_DONE:
+                    switch (connection_state)
+                    {
+                        case CS_SERVER_CERTIFICATE_RECEIVED:
+
+                            // There was no server key exchange message; check it's OK
+                            this.keyExchange.SkipServerKeyExchange();
+
+                            // NB: Fall through to next case label
+                            goto case CS_SERVER_KEY_EXCHANGE_RECEIVED;
+                        case CS_SERVER_KEY_EXCHANGE_RECEIVED:
+                        case CS_CERTIFICATE_REQUEST_RECEIVED:
+
+                            AssertEmpty(is);
+
+                            bool isClientCertificateRequested = (connection_state == CS_CERTIFICATE_REQUEST_RECEIVED || isSendCertificate);
+
+                            connection_state = CS_SERVER_HELLO_DONE_RECEIVED;
+
+                            if (isClientCertificateRequested)
+                            {
+                                SendClientCertificate(tlsClient.GetCertificate());
+                            }
+
+                            /*
+                             * Send the client key exchange message, depending on the key
+                             * exchange we are using in our ciphersuite.
+                             */
+                            SendClientKeyExchange(this.keyExchange.GenerateClientKeyExchange());
+
+                            connection_state = CS_CLIENT_KEY_EXCHANGE_SEND;
+
+                            if (isClientCertificateRequested)
+                            {
+                                byte[] clientCertificateSignature = tlsClient.GenerateCertificateSignature(rs.getCurrentHash());
+                                if (clientCertificateSignature != null)
+                                {
+                                    SendCertificateVerify(clientCertificateSignature);
+
+                                    connection_state = CS_CERTIFICATE_VERIFY_SEND;
+                                }
+                            }
+
+                            /*
+                             * Now, we send change cipher state
+                             */
+                            byte[] cmessage = new byte[1];
+                            cmessage[0] = 1;
+                            rs.WriteMessage(RL_CHANGE_CIPHER_SPEC, cmessage, 0, cmessage.Length);
+
+                            connection_state = CS_CLIENT_CHANGE_CIPHER_SPEC_SEND;
+
+                            /*
+                             * Calculate the master_secret
+                             */
+                            byte[] pms = this.keyExchange.GeneratePremasterSecret();
+
+                            securityParameters.masterSecret = TlsUtils.PRF(pms, "master secret",
+                                TlsUtils.Concat(securityParameters.clientRandom,
+                                    securityParameters.serverRandom), 48);
+
+                            // TODO Is there a way to ensure the data is really overwritten?
+                            /*
+                             * RFC 2246 8.1. "The pre_master_secret should be deleted from
+                             * memory once the master_secret has been computed."
+                             */
+                            Array.Clear(pms, 0, pms.Length);
+
+                            /*
+                             * Initialize our cipher suite
+                             */
+                            rs.clientCipherSpecDecided(tlsClient.createCipher(securityParameters));
+
+                            /*
+                             * Send our finished message.
+                             */
+                            byte[] clientVerifyData = TlsUtils.PRF(securityParameters.masterSecret,
+                                "client finished", rs.getCurrentHash(), 12);
+
+                            MemoryStream bos = new MemoryStream();
+                            TlsUtils.WriteUint8(HP_FINISHED, bos);
+                            TlsUtils.WriteOpaque24(clientVerifyData, bos);
+                            byte[] message = bos.ToArray();
+
+                            rs.WriteMessage(RL_HANDSHAKE, message, 0, message.Length);
+
+                            this.connection_state = CS_CLIENT_FINISHED_SEND;
+                            break;
+                        default:
+                            this.FailWithError(AL_fatal, AP_handshake_failure);
+                    }
+                    break;
+                case HP_SERVER_KEY_EXCHANGE:
+                    {
+                        switch (connection_state)
+                        {
+                            case CS_SERVER_HELLO_RECEIVED:
+
+                                // There was no server certificate message; check it's OK
+                                this.keyExchange.SkipServerCertificate();
+
+                                // NB: Fall through to next case label
+                                goto case CS_SERVER_CERTIFICATE_RECEIVED;
+                            case CS_SERVER_CERTIFICATE_RECEIVED:
+
+                                this.keyExchange.ProcessServerKeyExchange(is, securityParameters);
+
+                                AssertEmpty(is);
+                                break;
+
+                            default:
+                                this.FailWithError(AL_fatal, AP_unexpected_message);
+                        }
+
+                        this.connection_state = CS_SERVER_KEY_EXCHANGE_RECEIVED;
+                        break;
+                    }
+                case HP_CERTIFICATE_REQUEST:
+                    {
+                        switch (connection_state)
+                        {
+                            case CS_SERVER_CERTIFICATE_RECEIVED:
+
+                                // There was no server key exchange message; check it's OK
+                                this.keyExchange.SkipServerKeyExchange();
+
+                                // NB: Fall through to next case label
+                                goto case CS_SERVER_KEY_EXCHANGE_RECEIVED;
+                            case CS_SERVER_KEY_EXCHANGE_RECEIVED:
+                                {
+                                    byte[] types = TlsUtils.ReadOpaque8(is);
+                                    byte[] authorities = TlsUtils.ReadOpaque16(is);
+
+                                    AssertEmpty(is);
+
+                                    ArrayList authorityDNs = new ArrayList();
+
+                                    MemoryStream bis = new MemoryStream(authorities);
+                                    while (bis.Position < bis.Length)
+                                    {
+                                        byte[] dnBytes = TlsUtils.ReadOpaque16(bis);
+                                        authorityDNs.Add(new Org.BouncyCastle.Asn1.X509.X509Name(dnBytes));
+                                    }
+
+                                    this.tlsClient.ProcessServerCertificateRequest(types, authorityDNs);
+
+                                    break;
+                                }
+                            default:
+                                this.FailWithError(AL_fatal, AP_unexpected_message);
+                        }
+
+                        this.connection_state = CS_CERTIFICATE_REQUEST_RECEIVED;
+                        break;
+                    }
+                case HP_HELLO_REQUEST:
+                    /*
+                     * RFC 2246 7.4.1.1 Hello request
+                     * "This message will be ignored by the client if the client is currently
+                     * negotiating a session. This message may be ignored by the client if it
+                     * does not wish to renegotiate a session, or the client may, if it wishes,
+                     * respond with a no_renegotiation alert."
+                     */
+                    if (connection_state == CS_DONE)
+                    {
+                        // Renegotiation not supported yet
+                        SendAlert(AL_warning, AP_no_renegotiation);
+                    }
+                    break;
+                case HP_CLIENT_KEY_EXCHANGE:
+                case HP_CERTIFICATE_VERIFY:
+                case HP_CLIENT_HELLO:
+                default:
+                    // We do not support this!
+                    this.FailWithError(AL_fatal, AP_unexpected_message);
+                    break;
+            }
+        }
+
+        protected void AssertEmpty(MemoryStream is)
+        {
+            if (is.Position < is.Length)
+            {
+                this.FailWithError(AL_fatal, AP_decode_error);
+            }
+        }
+
+        protected void FailWithError(short alertLevel, short alertDescription)
+        {
+            /*
+             * Check if the connection is still open.
+             */
+            if (!closed)
+            {
+                /*
+                 * Prepare the message
+                 */
+                this.closed = true;
+
+                if (alertLevel == AL_fatal)
+                {
+                    /*
+                     * This is a fatal message.
+                     */
+                    this.failedWithError = true;
+                }
+                SendAlert(alertLevel, alertDescription);
+                rs.Close();
+                if (alertLevel == AL_fatal)
+                {
+                    throw new IOException(TLS_ERROR_MESSAGE);
+                }
+            }
+            else
+            {
+                throw new IOException(TLS_ERROR_MESSAGE);
+            }
+        }
+
+        private void SendAlert(short alertLevel, short alertDescription)
+        {
+            byte[] error = new byte[2];
+            error[0] = (byte)alertLevel;
+            error[1] = (byte)alertDescription;
+
+            rs.WriteMessage(RL_ALERT, error, 0, 2);
+        }
+
+        private bool WasCipherSuiteOffered(int cipherSuite)
+        {
+            for (int i = 0; i < offeredCipherSuites.Length; ++i)
+            {
+                if (offeredCipherSuites[i] == cipherSuite)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private void SendClientCertificate(Certificate clientCert)
+        {
+            MemoryStream bos = new MemoryStream();
+            TlsUtils.WriteUint8(HP_CERTIFICATE, bos);
+            clientCert.encode(bos);
+            byte[] message = bos.ToArray();
+
+            rs.WriteMessage(RL_HANDSHAKE, message, 0, message.Length);
+        }
+
+        private void SendClientKeyExchange(byte[] keData)
+        {
+            MemoryStream bos = new MemoryStream();
+            TlsUtils.WriteUint8(HP_CLIENT_KEY_EXCHANGE, bos);
+            if (keData == null)
+            {
+                TlsUtils.WriteUint24(0, bos);
+            }
+            else
+            {
+                TlsUtils.WriteUint24(keData.Length + 2, bos);
+                TlsUtils.WriteOpaque16(keData, bos);
+            }
+            byte[] message = bos.ToArray();
+
+            rs.WriteMessage(RL_HANDSHAKE, message, 0, message.Length);
+        }
+
+        private void SendCertificateVerify(byte[] data)
+        {
+            /*
+             * Send signature of handshake messages so far to prove we are the owner of the
+             * cert See RFC 2246 sections 4.7, 7.4.3 and 7.4.8
+             */
+            MemoryStream bos = new MemoryStream();
+            TlsUtils.WriteUint8(HP_CERTIFICATE_VERIFY, bos);
+            TlsUtils.WriteUint24(data.Length + 2, bos);
+            TlsUtils.WriteOpaque16(data, bos);
+            byte[] message = bos.ToArray();
+
+            rs.WriteMessage(RL_HANDSHAKE, message, 0, message.Length);
+        }
+
+        private void ProcessApplicationData()
+        {
+            /*
+             * There is nothing we need to do here.
+             *
+             * This function could be used for callbacks when application data arrives in the
+             * future.
+             */
+        }
+
+        private void ProcessAlert()
+        {
+            while (alertQueue.Size >= 2)
+            {
+                /*
+                 * An alert is always 2 bytes. Read the alert.
+                 */
+                byte[] tmp = new byte[2];
+                alertQueue.Read(tmp, 0, 2, 0);
+                alertQueue.RemoveData(2);
+                short level = tmp[0];
+                short description = tmp[1];
+                if (level == AL_fatal)
+                {
+                    /*
+                     * This is a fatal error.
+                     */
+                    this.failedWithError = true;
+                    this.closed = true;
+                    /*
+                     * Now try to close the stream, ignore errors.
+                     */
+                    try
+                    {
+                        rs.Close();
+                    }
+                    catch (Exception)
+                    {
+
+                    }
+                    throw new IOException(TLS_ERROR_MESSAGE);
+                }
+                else
+                {
+                    /*
+                     * This is just a warning.
+                     */
+                    if (description == AP_close_notify)
+                    {
+                        /*
+                         * Close notify
+                         */
+                        this.FailWithError(AL_warning, AP_close_notify);
+                    }
+                    /*
+                     * If it is just a warning, we continue.
+                     */
+                }
+            }
+        }
+
+        /**
+         * This method is called, when a change cipher spec message is received.
+         *
+         * @throws IOException If the message has an invalid content or the handshake is not
+         *             in the correct state.
+         */
+        private void ProcessChangeCipherSpec()
+        {
+            while (changeCipherSpecQueue.Size > 0)
+            {
+                /*
+                 * A change cipher spec message is only one byte with the value 1.
+                 */
+                byte[] b = new byte[1];
+                changeCipherSpecQueue.Read(b, 0, 1, 0);
+                changeCipherSpecQueue.RemoveData(1);
+                if (b[0] != 1)
+                {
+                    /*
+                     * This should never happen.
+                     */
+                    this.FailWithError(AL_fatal, AP_unexpected_message);
+                }
+
+                /*
+                 * Check if we are in the correct connection state.
+                 */
+                if (this.connection_state != CS_CLIENT_FINISHED_SEND)
+                {
+                    this.FailWithError(AL_fatal, AP_handshake_failure);
+                }
+
+                rs.serverClientSpecReceived();
+
+                this.connection_state = CS_SERVER_CHANGE_CIPHER_SPEC_RECEIVED;
+            }
+        }
+
+        public void Connect(CertificateVerifyer verifyer)
+        {
+            this.Connect(new DefaultTlsClient(verifyer));
+        }
+
+        public void Connect(TlsClient tlsClient)
+        {
+            if (tlsClient == null)
+            {
+                throw new ArgumentException("'tlsClient' cannot be null");
+            }
+            if (this.tlsClient != null)
+            {
+                throw new InvalidOperationException("connect can only be called once");
+            }
+
+            this.tlsClient = tlsClient;
+            this.tlsClient.Init(this);
+
+            /*
+             * Send Client hello
+             *
+             * First, generate some random data.
+             */
+            securityParameters = new SecurityParameters();
+            securityParameters.clientRandom = new byte[32];
+            random.GetBytes(securityParameters.clientRandom);
+            TlsUtils.WriteGMTUnixTime(securityParameters.clientRandom, 0);
+
+            MemoryStream os = new MemoryStream();
+            TlsUtils.WriteVersion(os);
+            os.Write(securityParameters.clientRandom, 0, securityParameters.clientRandom.Length);
+
+            /*
+             * Length of Session id
+             */
+            TlsUtils.WriteUint8((short)0, os);
+            //TlsUtils.writeUint8((short)1, os);
+
+            /*
+             * Cipher suites
+             */
+            this.offeredCipherSuites = this.tlsClient.GetCipherSuites();
+
+            // Note: 1 extra slot for TLS_EMPTY_RENEGOTIATION_INFO_SCSV
+            TlsUtils.WriteUint16(2 * (offeredCipherSuites.Length/* + 1*/), os);
+            for (int i = 0; i < offeredCipherSuites.Length; ++i)
+            {
+                TlsUtils.WriteUint16(offeredCipherSuites[i], os);
+            }
+
+            // RFC 5746 3.3
+            // Note: If renegotiation added, remove this (and extra slot above)
+            //TlsUtils.writeUint16(TLS_EMPTY_RENEGOTIATION_INFO_SCSV, os);
+
+            /*
+             * Compression methods, just the null method.
+             */
+            byte[] compressionMethods = new byte[] { 0x00 };
+            TlsUtils.WriteOpaque8(compressionMethods, os);
+
+            /*
+             * Extensions
+             */
+            // Integer -> byte[]
+            IDictionary clientExtensions = this.tlsClient.generateClientExtensions();
+
+            // RFC 5746 3.4
+            // Note: If renegotiation is implemented, need to use this instead of TLS_EMPTY_RENEGOTIATION_INFO_SCSV
+//      {
+//          if (clientExtensions == null)
+//          {
+//              clientExtensions = new Hashtable();
+//          }
+//
+//          clientExtensions.put(EXT_RenegotiationInfo, createRenegotiationInfo(emptybuf));
+//      }
+
+            this.extendedClientHello = clientExtensions != null && clientExtensions.Count > 0;
+
+            if (extendedClientHello)
+            {
+                MemoryStream ext = new MemoryStream();
+
+                foreach(int extType in clientExtensions.Keys)
+                {
+                    byte[] extValue = (byte[])clientExtensions[extType];
+
+                    TlsUtils.WriteUint16(extType, ext);
+                    TlsUtils.WriteOpaque16(extValue, ext);
+                }
+
+                TlsUtils.WriteOpaque16(ext.ToArray(), os);
+            }
+
+            MemoryStream bos = new MemoryStream();
+            TlsUtils.WriteUint8(HP_CLIENT_HELLO, bos);
+            TlsUtils.WriteUint24((int)os.Length, bos);
+            bos.Write(os.ToArray(), 0, (int)os.Length);
+            byte[] message = bos.ToArray();
+            rs.WriteMessage(RL_HANDSHAKE, message, 0, message.Length);
+            connection_state = CS_CLIENT_HELLO_SEND;
+
+            /*
+             * We will now read data, until we have completed the handshake.
+            while (connection_state != CS_DONE)
+            {
+                // TODO Should we send fatal alerts in the event of an exception
+                // (see readApplicationData)
+                rs.readData();
+            }
+
+            this.tlsInputStream = new TlsInputStream(this);
+            this.tlsOutputStream = new TlsOutputStream(this);
+             */
+        }
+
+        public void WriteApplicationData(MemoryStream ms, byte[] b)
+        {
+            /*
+             * We will now read data, until we have completed the handshake.
+             */
+            rs.SetInputStream(ms);
+            rs.SetOutputStream(ms);
+            WriteData(b, 0, b.Length);
+            this.tlsInputStream = new TlsInputStream(this);
+            this.tlsOutputStream = new TlsOutputStream(this);
+        }
+
+        public byte[] ReadApplicationData(MemoryStream ms)
+        {
+            /*
+             * We will now read data, until we have completed the handshake.
+             */
+            rs.SetInputStream(ms);
+            rs.SetOutputStream(ms);
+            return ReadApplicationData();
+        }
+
+        protected byte[] ReadApplicationData()
+        {
+            while (rs.HasMore())
+            {
+                /*
+                 * We need to read some data.
+                 */
+                if (this.failedWithError)
+                {
+                    /*
+                     * Something went terribly wrong, we should throw an IOException
+                     */
+                    throw new IOException(TLS_ERROR_MESSAGE);
+                }
+                if (this.closed)
+                {
+                    /*
+                     * Connection has been closed, there is no more data to read.
+                     */
+                    return null;
+                }
+
+                try
+                {
+                    rs.ReadData();
+                }
+                catch (IOException e)
+                {
+                    if (!this.closed)
+                    {
+                        this.FailWithError(AL_fatal, AP_internal_error);
+                    }
+                    throw e;
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e.ToString());
+                    if (!this.closed)
+                    {
+                        this.FailWithError(AL_fatal, AP_internal_error);
+                    }
+                    throw e;
+                }
+            }
+            int len = applicationDataQueue.Size;
+            byte[] b = new byte[len];
+            applicationDataQueue.Read(b, 0, len, 0);
+            applicationDataQueue.RemoveData(len);
+            return b;
+        }
+
+
+        public short UpdateConnectState(MemoryStream ms)
+        {
+            rs.SetInputStream(ms);
+            rs.SetOutputStream(ms);
+            while (connection_state != CS_DONE && rs.HasMore())
+            {
+                rs.ReadData();
+            }
+            return connection_state;
+        }
+
+        /**
+         * Read data from the network. The method will return immediately, if there is still
+         * some data left in the buffer, or block until some application data has been read
+         * from the network.
+         *
+         * @param buf The buffer where the data will be copied to.
+         * @param offset The position where the data will be placed in the buffer.
+         * @param len The maximum number of bytes to read.
+         * @return The number of bytes read.
+         * @throws IOException If something goes wrong during reading data.
+         */
+        protected int ReadApplicationData(byte[] buf, int offset, int len)
+        {
+            while (applicationDataQueue.Size == 0)
+            {
+                /*
+                 * We need to read some data.
+                 */
+                if (this.closed)
+                {
+                    if (this.failedWithError)
+                    {
+                        /*
+                         * Something went terribly wrong, we should throw an IOException
+                         */
+                        throw new IOException(TLS_ERROR_MESSAGE);
+                    }
+
+                    /*
+                     * Connection has been closed, there is no more data to read.
+                     */
+                    return -1;
+                }
+
+                try
+                {
+                    rs.ReadData();
+                }
+                catch (IOException e)
+                {
+                    if (!this.closed)
+                    {
+                        this.FailWithError(AL_fatal, AP_internal_error);
+                    }
+                    throw e;
+                }
+                catch (Exception e)
+                {
+                    if (!this.closed)
+                    {
+                        this.FailWithError(AL_fatal, AP_internal_error);
+                    }
+                    throw e;
+                }
+            }
+            len = Math.Min(len, applicationDataQueue.Size);
+            applicationDataQueue.Read(buf, offset, len, 0);
+            applicationDataQueue.RemoveData(len);
+            return len;
+        }
+
+        /**
+         * Send some application data to the remote system.
+         * <p/>
+         * The method will handle fragmentation internally.
+         *
+         * @param buf The buffer with the data.
+         * @param offset The position in the buffer where the data is placed.
+         * @param len The length of the data.
+         * @throws IOException If something goes wrong during sending.
+         */
+        protected void WriteData(byte[] buf, int offset, int len)
+        {
+            if (this.closed)
+            {
+                if (this.failedWithError)
+                {
+                    throw new IOException(TLS_ERROR_MESSAGE);
+                }
+
+                throw new IOException("Sorry, connection has been closed, you cannot write more data");
+            }
+
+            /*
+             * Protect against known IV attack!
+             *
+             * DO NOT REMOVE THIS LINE, EXCEPT YOU KNOW EXACTLY WHAT YOU ARE DOING HERE.
+             */
+            rs.WriteMessage(RL_APPLICATION_DATA, emptybuf, 0, 0);
+
+            do
+            {
+                /*
+                 * We are only allowed to write fragments up to 2^14 bytes.
+                 */
+                int toWrite = Math.Min(len, 1 << 14);
+
+                try
+                {
+                    rs.WriteMessage(RL_APPLICATION_DATA, buf, offset, toWrite);
+                }
+                catch (IOException e)
+                {
+                    if (!closed)
+                    {
+                        this.FailWithError(AL_fatal, AP_internal_error);
+                    }
+                    throw e;
+                }
+                catch (Exception e)
+                {
+                    if (!closed)
+                    {
+                        this.FailWithError(AL_fatal, AP_internal_error);
+                    }
+                    throw e;
+                }
+
+
+                offset += toWrite;
+                len -= toWrite;
+            }
+            while (len > 0);
+
+        }
+
+        /**
+         * @return An OutputStream which can be used to send data.
+         */
+        public Stream GetOutputStream()
+        {
+            return this.tlsOutputStream;
+        }
+
+        /**
+         * @return An InputStream which can be used to read data.
+         */
+        public Stream GetInputStream()
+        {
+            return this.tlsInputStream;
+        }
+
+        /**
+         * Closes this connection.
+         *
+         * @throws IOException If something goes wrong during closing.
+         */
+        public void Close()
+        {
+            if (!closed)
+            {
+                this.FailWithError((short)1, (short)0);
+            }
+        }
+
+        public void Flush()
+        {
+            rs.Flush();
+        }
+
+        public void setKeyManagers(X509Certificate2Collection keyManagers)
+        {
+            this.keyManagers = keyManagers;
+        }
+
+        public void setTrustManagers(X509Certificate2Collection trustManagers)
+        {
+            this.trustManagers = trustManagers;
+        }
     }
 }
