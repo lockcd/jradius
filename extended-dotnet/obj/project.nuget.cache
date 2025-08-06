@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "dgSpecHash": "Px5i4xd21Is=",
+  "success": true,
+  "projectFilePath": "/app/extended-dotnet/JRadius.Extended.csproj",
+  "expectedPackageFiles": [
+    "/home/jules/.nuget/packages/bouncycastle.cryptography/2.6.2/bouncycastle.cryptography.2.6.2.nupkg.sha512"
+  ],
+  "logs": []
+}
