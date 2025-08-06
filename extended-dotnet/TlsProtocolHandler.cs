@@ -4,11 +4,11 @@ using System.Collections.Generic;
 using System.IO;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
-using JRadius.Core.Packet;
-using JRadius.Core.Packet.Attribute;
-using JRadius.Core.Server;
-using JRadius.Core.Session;
-using JRadius.Core.Util;
+//using JRadius.Core.Packet;
+//using JRadius.Core.Packet.Attribute;
+//using JRadius.Core.Server;
+//using JRadius.Core.Session;
+//using JRadius.Core.Util;
 using Org.BouncyCastle.Asn1.X509;
 using Microsoft.Extensions.Logging;
 
@@ -281,8 +281,8 @@ namespace JRadius.Extended.Tls
 
                                     break;
                                 }
-                            default:
-                                this.FailWithError(AL_fatal, AP_unexpected_message);
+                            //default:
+                            //    this.FailWithError(AL_fatal, AP_unexpected_message);
                         }
 
                         connection_state = CS_SERVER_CERTIFICATE_RECEIVED;
@@ -326,8 +326,8 @@ namespace JRadius.Extended.Tls
                              */
                             this.appDataReady = true;
                             break;
-                        default:
-                            this.FailWithError(AL_fatal, AP_unexpected_message);
+                        //default:
+                        //    this.FailWithError(AL_fatal, AP_unexpected_message);
                     }
                     break;
                 case HP_SERVER_HELLO:
@@ -417,6 +417,7 @@ namespace JRadius.Extended.Tls
                             break;
                         default:
                             this.FailWithError(AL_fatal, AP_unexpected_message);
+                            break;
                     }
                     break;
                 case HP_SERVER_HELLO_DONE:
@@ -509,6 +510,7 @@ namespace JRadius.Extended.Tls
                             break;
                         default:
                             this.FailWithError(AL_fatal, AP_handshake_failure);
+                            break;
                     }
                     break;
                 case HP_SERVER_KEY_EXCHANGE:
@@ -531,6 +533,7 @@ namespace JRadius.Extended.Tls
 
                             default:
                                 this.FailWithError(AL_fatal, AP_unexpected_message);
+                                break;
                         }
 
                         this.connection_state = CS_SERVER_KEY_EXCHANGE_RECEIVED;
@@ -560,7 +563,7 @@ namespace JRadius.Extended.Tls
                                     while (bis.Position < bis.Length)
                                     {
                                         byte[] dnBytes = TlsUtils.ReadOpaque16(bis);
-                                        authorityDNs.Add(new X509Name(dnBytes));
+                                        //authorityDNs.Add(new X509Name(dnBytes));
                                     }
 
                                     this.tlsClient.ProcessServerCertificateRequest(types, authorityDNs);
@@ -569,6 +572,7 @@ namespace JRadius.Extended.Tls
                                 }
                             default:
                                 this.FailWithError(AL_fatal, AP_unexpected_message);
+                                break;
                         }
 
                         this.connection_state = CS_CERTIFICATE_REQUEST_RECEIVED;
@@ -860,7 +864,7 @@ namespace JRadius.Extended.Tls
              * Extensions
              */
             // Integer -> byte[]
-            IDictionary clientExtensions = this.tlsClient.GenerateClientExtensions();
+            IDictionary clientExtensions = null; //this.tlsClient.GenerateClientExtensions();
 
             // RFC 5746 3.4
             // Note: If renegotiation is implemented, need to use this instead of TLS_EMPTY_RENEGOTIATION_INFO_SCSV
@@ -923,6 +927,7 @@ namespace JRadius.Extended.Tls
             this.tlsInputStream = new TlsInputStream(this);
             this.tlsOutputStream = new TlsOutputStream(this);
         }
+
 
         public byte[] ReadApplicationData(MemoryStream ms)
         {
@@ -997,7 +1002,7 @@ namespace JRadius.Extended.Tls
             return connection_state;
         }
 
-        protected int ReadApplicationData(byte[] buf, int offset, int len)
+        protected internal int ReadApplicationData(byte[] buf, int offset, int len)
         {
             while (applicationDataQueue.Size == 0)
             {
@@ -1047,7 +1052,7 @@ namespace JRadius.Extended.Tls
             return len;
         }
 
-        protected void WriteData(byte[] buf, int offset, int len)
+        protected internal void WriteData(byte[] buf, int offset, int len)
         {
             if (this.closed)
             {
