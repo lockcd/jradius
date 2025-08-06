@@ -3,6 +3,7 @@
   <ItemGroup>
     <ProjectReference Include="..\core-dotnet\JRadius.Core.csproj" />
     <ProjectReference Include="..\dictionary-dotnet\JRadius.Dictionary.csproj" />
+    <ProjectReference Include="..\dictionary-min-dotnet\JRadius.Dictionary.Min.csproj" />
   </ItemGroup>
 
   <ItemGroup>

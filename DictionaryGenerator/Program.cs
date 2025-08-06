@@ -43,6 +43,8 @@ namespace DictionaryGenerator
             sb.AppendLine($"    public class {className}");
             sb.AppendLine("    {");
 
+            var addedAttributes = new System.Collections.Generic.HashSet<string>();
+
             foreach (var line in lines)
             {
                 if (line.StartsWith("ATTRIBUTE"))
@@ -51,6 +53,11 @@ namespace DictionaryGenerator
                     if (parts.Length >= 3)
                     {
                         var attributeName = parts[1].Replace("-", "_");
+                        if (addedAttributes.Contains(attributeName))
+                        {
+                            continue;
+                        }
+                        addedAttributes.Add(attributeName);
                         var attributeId = parts[2];
                         sb.AppendLine($"        public const int {attributeName} = {attributeId};");
                     }
