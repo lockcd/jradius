@@ -19,7 +19,6 @@ namespace JRadius.Dictionary.v2
         public const int Alc_Create_Host = 15;
         public const int Alc_ANCP_Str = 16;
         public const int Alc_Retail_Serv_Id = 17;
-        public const int Alc_Retail_Serv_Id = 17;
         public const int Alc_Default_Router = 18;
         public const int Alc_Client_Hardware_Addr = 27;
         public const int Alc_Acct_I_Inprof_Octets_64 = 19;

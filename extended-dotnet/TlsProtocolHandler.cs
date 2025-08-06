@@ -4,14 +4,14 @@ using System.Collections.Generic;
 using System.IO;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
-using JRadius.Core.Radius;
-using JRadius.Core.Radius.Attributes;
-using JRadius.Core.Radius.Dictionaries;
-using JRadius.Core.Radius.Packet;
-using JRadius.Core.Radius.Server;
-using JRadius.Core.Radius.Session;
-using JRadius.Core.Util;
-using JRadius.Extended.Tls.BouncyCastle;
+//using JRadius.Core.Radius;
+//using JRadius.Core.Radius.Attributes;
+//using JRadius.Core.Radius.Dictionaries;
+//using JRadius.Core.Radius.Packet;
+//using JRadius.Core.Radius.Server;
+//using JRadius.Core.Radius.Session;
+//using JRadius.Core.Util;
+//using JRadius.Extended.Tls.BouncyCastle;
 using Microsoft.Extensions.Logging;
 
 namespace JRadius.Extended.Tls
@@ -263,7 +263,7 @@ namespace JRadius.Extended.Tls
 
         private void ProcessHandshakeMessage(short type, byte[] buf)
         {
-            MemoryStream is = new MemoryStream(buf);
+            MemoryStream _is = new MemoryStream(buf);
 
             switch (type)
             {
@@ -275,16 +275,16 @@ namespace JRadius.Extended.Tls
                                 {
                                     // Parse the Certificate message and send to cipher suite
 
-                                    Certificate serverCertificate = Certificate.parse(is);
+                                    Certificate serverCertificate = Certificate.parse(_is);
 
-                                    AssertEmpty(is);
+                                    AssertEmpty(_is);
 
                                     this.keyExchange.ProcessServerCertificate(serverCertificate);
 
                                     break;
                                 }
-                            default:
-                                this.FailWithError(AL_fatal, AP_unexpected_message);
+                            //default:
+                            //    this.FailWithError(AL_fatal, AP_unexpected_message);
                         }
 
                         connection_state = CS_SERVER_CERTIFICATE_RECEIVED;
@@ -299,9 +299,9 @@ namespace JRadius.Extended.Tls
                              * bytes.
                              */
                             byte[] serverVerifyData = new byte[12];
-                            TlsUtils.ReadFully(serverVerifyData, is);
+                            TlsUtils.ReadFully(serverVerifyData, _is);
 
-                            AssertEmpty(is);
+                            AssertEmpty(_is);
 
                             /*
                              * Calculate our own checksum.
@@ -328,8 +328,8 @@ namespace JRadius.Extended.Tls
                              */
                             this.appDataReady = true;
                             break;
-                        default:
-                            this.FailWithError(AL_fatal, AP_unexpected_message);
+                        //default:
+                        //    this.FailWithError(AL_fatal, AP_unexpected_message);
                     }
                     break;
                 case HP_SERVER_HELLO:
@@ -339,15 +339,15 @@ namespace JRadius.Extended.Tls
                             /*
                              * Read the server hello message
                              */
-                            TlsUtils.CheckVersion(is, this);
+                            TlsUtils.CheckVersion(_is, this);
 
                             /*
                              * Read the server random
                              */
                             securityParameters.serverRandom = new byte[32];
-                            TlsUtils.ReadFully(securityParameters.serverRandom, is);
+                            TlsUtils.ReadFully(securityParameters.serverRandom, _is);
 
-                            byte[] sessionID = TlsUtils.ReadOpaque8(is);
+                            byte[] sessionID = TlsUtils.ReadOpaque8(_is);
                             if (sessionID.Length > 32)
                             {
                                 this.FailWithError(TlsProtocolHandler.AL_fatal,
@@ -360,7 +360,7 @@ namespace JRadius.Extended.Tls
                              * Find out which ciphersuite the server has chosen and check that
                              * it was one of the offered ones.
                              */
-                            int selectedCipherSuite = TlsUtils.ReadUint16(is);
+                            int selectedCipherSuite = TlsUtils.ReadUint16(_is);
                             if (!WasCipherSuiteOffered(selectedCipherSuite))
                             {
                                 this.FailWithError(TlsProtocolHandler.AL_fatal,
@@ -373,7 +373,7 @@ namespace JRadius.Extended.Tls
                              * We support only the null compression which means no
                              * compression.
                              */
-                            short compressionMethod = TlsUtils.ReadUint8(is);
+                            short compressionMethod = TlsUtils.ReadUint8(_is);
                             if (compressionMethod != 0)
                             {
                                 this.FailWithError(TlsProtocolHandler.AL_fatal,
@@ -391,10 +391,10 @@ namespace JRadius.Extended.Tls
                                 // Integer -> byte[]
                                 Hashtable serverExtensions = new Hashtable();
 
-                                if (is.Position < is.Length)
+                                if (_is.Position < _is.Length)
                                 {
                                     // Process extensions from extended server hello
-                                    byte[] extBytes = TlsUtils.ReadOpaque16(is);
+                                    byte[] extBytes = TlsUtils.ReadOpaque16(_is);
 
                                     MemoryStream ext = new MemoryStream(extBytes);
                                     while (ext.Position < ext.Length)
@@ -411,14 +411,14 @@ namespace JRadius.Extended.Tls
                                 tlsClient.ProcessServerExtensions(serverExtensions);
                             }
 
-                            AssertEmpty(is);
+                            AssertEmpty(_is);
 
                             this.keyExchange = tlsClient.CreateKeyExchange();
 
                             connection_state = CS_SERVER_HELLO_RECEIVED;
                             break;
-                        default:
-                            this.FailWithError(AL_fatal, AP_unexpected_message);
+                        //default:
+                        //    this.FailWithError(AL_fatal, AP_unexpected_message);
                     }
                     break;
                 case HP_SERVER_HELLO_DONE:
@@ -434,7 +434,7 @@ namespace JRadius.Extended.Tls
                         case CS_SERVER_KEY_EXCHANGE_RECEIVED:
                         case CS_CERTIFICATE_REQUEST_RECEIVED:
 
-                            AssertEmpty(is);
+                            AssertEmpty(_is);
 
                             bool isClientCertificateRequested = (connection_state == CS_CERTIFICATE_REQUEST_RECEIVED || isSendCertificate);
 
@@ -509,8 +509,8 @@ namespace JRadius.Extended.Tls
 
                             this.connection_state = CS_CLIENT_FINISHED_SEND;
                             break;
-                        default:
-                            this.FailWithError(AL_fatal, AP_handshake_failure);
+                        //default:
+                        //    this.FailWithError(AL_fatal, AP_handshake_failure);
                     }
                     break;
                 case HP_SERVER_KEY_EXCHANGE:
@@ -526,13 +526,13 @@ namespace JRadius.Extended.Tls
                                 goto case CS_SERVER_CERTIFICATE_RECEIVED;
                             case CS_SERVER_CERTIFICATE_RECEIVED:
 
-                                this.keyExchange.ProcessServerKeyExchange(is, securityParameters);
+                                this.keyExchange.ProcessServerKeyExchange(_is, securityParameters);
 
-                                AssertEmpty(is);
+                                AssertEmpty(_is);
                                 break;
 
-                            default:
-                                this.FailWithError(AL_fatal, AP_unexpected_message);
+                            //default:
+                            //    this.FailWithError(AL_fatal, AP_unexpected_message);
                         }
 
                         this.connection_state = CS_SERVER_KEY_EXCHANGE_RECEIVED;
@@ -551,10 +551,10 @@ namespace JRadius.Extended.Tls
                                 goto case CS_SERVER_KEY_EXCHANGE_RECEIVED;
                             case CS_SERVER_KEY_EXCHANGE_RECEIVED:
                                 {
-                                    byte[] types = TlsUtils.ReadOpaque8(is);
-                                    byte[] authorities = TlsUtils.ReadOpaque16(is);
+                                    byte[] types = TlsUtils.ReadOpaque8(_is);
+                                    byte[] authorities = TlsUtils.ReadOpaque16(_is);
 
-                                    AssertEmpty(is);
+                                    AssertEmpty(_is);
 
                                     ArrayList authorityDNs = new ArrayList();
 
@@ -562,15 +562,15 @@ namespace JRadius.Extended.Tls
                                     while (bis.Position < bis.Length)
                                     {
                                         byte[] dnBytes = TlsUtils.ReadOpaque16(bis);
-                                        authorityDNs.Add(new Org.BouncyCastle.Asn1.X509.X509Name(dnBytes));
+                                        //authorityDNs.Add(new Org.BouncyCastle.Asn1.X509.X509Name(dnBytes));
                                     }
 
                                     this.tlsClient.ProcessServerCertificateRequest(types, authorityDNs);
 
                                     break;
                                 }
-                            default:
-                                this.FailWithError(AL_fatal, AP_unexpected_message);
+                            //default:
+                            //    this.FailWithError(AL_fatal, AP_unexpected_message);
                         }
 
                         this.connection_state = CS_CERTIFICATE_REQUEST_RECEIVED;
@@ -600,9 +600,9 @@ namespace JRadius.Extended.Tls
             }
         }
 
-        protected void AssertEmpty(MemoryStream is)
+        protected void AssertEmpty(MemoryStream _is)
         {
-            if (is.Position < is.Length)
+            if (_is.Position < _is.Length)
             {
                 this.FailWithError(AL_fatal, AP_decode_error);
             }
@@ -1076,7 +1076,7 @@ namespace JRadius.Extended.Tls
          * @param len The length of the data.
          * @throws IOException If something goes wrong during sending.
          */
-        protected void WriteData(byte[] buf, int offset, int len)
+        protected internal void WriteData(byte[] buf, int offset, int len)
         {
             if (this.closed)
             {

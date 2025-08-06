@@ -24,7 +24,8 @@ namespace JRadius.Extended.Tls
 
         public override int Read(byte[] buffer, int offset, int count)
         {
-            return handler.ReadApplicationData(buffer, offset, count);
+            //return handler.ReadApplicationData(buffer, offset, count);
+            throw new System.NotSupportedException();
         }
 
         public override long Seek(long offset, SeekOrigin origin)
