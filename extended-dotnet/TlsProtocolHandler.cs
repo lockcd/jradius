@@ -565,7 +565,7 @@ namespace JRadius.Extended.Tls
                                     while (bis.Position < bis.Length)
                                     {
                                         byte[] dnBytes = TlsUtils.ReadOpaque16(bis);
-                                        //authorityDNs.Add(new X509Name(dnBytes));
+                                        authorityDNs.Add(new X509Name(System.Text.Encoding.UTF8.GetString(dnBytes)));
                                     }
 
                                     this.tlsClient.ProcessServerCertificateRequest(types, authorityDNs);
