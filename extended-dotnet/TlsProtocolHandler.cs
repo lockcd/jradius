@@ -866,7 +866,7 @@ namespace JRadius.Extended.Tls
              * Extensions
              */
             // Integer -> byte[]
-            IDictionary clientExtensions = null; //this.tlsClient.GenerateClientExtensions();
+            IDictionary clientExtensions = this.tlsClient.generateClientExtensions();
 
             // RFC 5746 3.4
             // Note: If renegotiation is implemented, need to use this instead of TLS_EMPTY_RENEGOTIATION_INFO_SCSV
