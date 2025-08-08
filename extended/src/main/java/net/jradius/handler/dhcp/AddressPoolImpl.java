@@ -17,6 +17,7 @@
  * Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  *
  */
+
 package net.jradius.handler.dhcp;
 
 import java.io.File;
@@ -26,13 +27,17 @@ import java.io.Serializable;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.Arrays;
+
 import net.jradius.util.RadiusRandom;
 import net.jradius.util.RadiusUtils;
-import org.ehcache.Cache;
-import org.ehcache.event.CacheEvent;
-import org.ehcache.event.CacheEventListener;
+import net.sf.ehcache.Cache;
+import net.sf.ehcache.CacheException;
+import net.sf.ehcache.Ehcache;
+import net.sf.ehcache.Element;
+import net.sf.ehcache.event.CacheEventListener;
 
-public class AddressPoolImpl implements AddressPool, CacheEventListener<Object, Object> {
+public class AddressPoolImpl implements AddressPool, CacheEventListener
+{
     protected String leaseFile = "/tmp/leases.dhcp";
     protected InetAddress network;
     protected InetAddress netmask;
@@ -42,7 +47,7 @@ public class AddressPoolImpl implements AddressPool, CacheEventListener<Object, 
     protected int fudge = 10;
     protected int leaseTime;
     protected AddressPoolListener listener;
-    protected Cache<Serializable, Serializable> leases;
+    protected Cache leases;
     
     class MACKey implements Serializable
     {
@@ -149,13 +154,13 @@ public class AddressPoolImpl implements AddressPool, CacheEventListener<Object, 
         if (leases == null) throw new RuntimeException("leases not set");
 
         MACKey hwKey = new MACKey(hwa);
-        InetAddress leasedIP = (InetAddress) leases.get(hwKey);
-        MACKey leasedHW = (requested != null) ? (MACKey) leases.get(requested) : null;
+        Element eHW = leases.get(hwKey);
+        Element eIP = leases.get(requested);
         
         if (anyIPAddress.equals(requested))
             requested = null;
         
-        if (leasedIP == null)
+        if (eHW == null)
         {
             /**
              *   Client does not yet have a leased IP address
@@ -176,15 +181,15 @@ public class AddressPoolImpl implements AddressPool, CacheEventListener<Object, 
                     return null;
                 }
 
-                if (leasedHW != null && hwKey.equals(leasedHW))
+                if (eIP != null && hwKey.equals(eIP.getValue()))
                 {
                     /**
                      *  We owned the lease, so let's go ahead and update the IP
                      */
                     
-                    leases.remove(requested);
+                    leases.remove(eIP.getKey());
                 }
-                else if (leasedHW != null)
+                else
                 {
                     /**
                      *  IP address is already leased
@@ -193,11 +198,11 @@ public class AddressPoolImpl implements AddressPool, CacheEventListener<Object, 
                     return null;
                 }
 
-                leasedIP = requested;
+                eHW = new Element(hwKey, requested);
             }
             else
             {
-                leasedIP = nextIP();
+                eHW = new Element(hwKey, nextIP());
             }
         }
         else
@@ -208,32 +213,32 @@ public class AddressPoolImpl implements AddressPool, CacheEventListener<Object, 
 
             if (forceNew)
             {
-                if (leasedHW != null && hwKey.equals(leasedHW))
+                if (eIP != null && hwKey.equals(eIP.getValue()))
                 {
                     /**
                      *  We owned the lease, so let's go ahead and update the IP
                      */
 
-                    leases.remove(requested);
+                    leases.remove(eIP.getKey());
                 }
 
-                leasedIP = nextIP();
+                eHW = new Element(hwKey, nextIP());
             }
             else if (requested != null) 
             {
-                if (!requested.equals(leasedIP))
+                if (!requested.equals(eHW.getValue()))
                 {
                     /**
                      *  Requested IP address does not match leased IP
                      */
 
-                    if (leasedHW != null && hwKey.equals(leasedHW))
+                    if (eIP != null && hwKey.equals(eIP.getValue()))
                     {
                         /**
                          *  We owned the lease, so let's go ahead and update the IP
                          */
 
-                        leases.remove(requested);
+                        leases.remove(eIP.getKey());
                     }
                     else
                     {
@@ -243,12 +248,14 @@ public class AddressPoolImpl implements AddressPool, CacheEventListener<Object, 
             }
         }
 
-        leases.put(hwKey, leasedIP);
-        leases.put(leasedIP, hwKey);
+        eIP = new Element(eHW.getValue(), eHW.getKey());
+
+        leases.put(eHW);
+        leases.put(eIP);
         
         writeLeaseFile();
         
-        return leasedIP;
+        return (InetAddress) eHW.getValue();
     }
 
     public void writeLeaseFile()
@@ -259,12 +266,12 @@ public class AddressPoolImpl implements AddressPool, CacheEventListener<Object, 
             File file = new File(getLeaseFile());
             PrintWriter writer = new PrintWriter(new FileWriter(file));
             
-            for (Cache.Entry<Serializable, Serializable> entry : leases)
+            for (Object o : leases.getKeys())
             {
-                if (entry.getKey() instanceof MACKey)
+                if (o instanceof MACKey)
                 {
-                    InetAddress inet = (InetAddress) entry.getValue();
-                    MACKey macKey = (MACKey) entry.getKey();
+                    InetAddress inet = (InetAddress)leases.get(o).getValue();
+                    MACKey macKey = (MACKey)o;
 
                     writer.print(inet.getHostAddress());
                     writer.print(" ");
@@ -280,9 +287,37 @@ public class AddressPoolImpl implements AddressPool, CacheEventListener<Object, 
         }
     }
     
-    @Override
-    public void onEvent(CacheEvent<?, ?> event) {
-        // Not used
+    public void notifyElementEvicted(Ehcache cache, Element e)
+    {
+    }
+
+    public void notifyElementExpired(Ehcache cache, Element e)
+    {
+    }
+
+    public void notifyElementPut(Ehcache cache, Element e) throws CacheException
+    {
+    }
+
+    public void notifyElementRemoved(Ehcache cache, Element e) throws CacheException
+    {
+    }
+
+    public void notifyElementUpdated(Ehcache cache, Element e) throws CacheException
+    {
+    }
+
+    public void notifyRemoveAll(Ehcache cache)
+    {
+    }
+
+    public Object clone() throws CloneNotSupportedException
+    {
+        return super.clone();
+    }
+
+    public void dispose()
+    {
     }
 
     public void setFudge(int fudge)
@@ -295,7 +330,7 @@ public class AddressPoolImpl implements AddressPool, CacheEventListener<Object, 
         this.leaseFile = leaseFile;
     }
 
-    public void setLeases(Cache<Serializable, Serializable> leases)
+    public void setLeases(Cache leases)
     {
         this.leases = leases;
     }
@@ -325,7 +360,7 @@ public class AddressPoolImpl implements AddressPool, CacheEventListener<Object, 
         return leaseFile;
     }
 
-    public Cache<Serializable, Serializable> getLeases()
+    public Ehcache getLeases()
     {
         return leases;
     }
