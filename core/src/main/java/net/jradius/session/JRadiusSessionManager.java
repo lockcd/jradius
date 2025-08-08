@@ -18,47 +18,40 @@
  * Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  *
  */
+
 package net.jradius.session;
 
 import java.io.Serializable;
-import java.net.URL;
-import java.time.Duration;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.Map;
+
 import net.jradius.exception.RadiusException;
 import net.jradius.log.JRadiusLogEntry;
 import net.jradius.log.RadiusLog;
 import net.jradius.server.EventDispatcher;
 import net.jradius.server.JRadiusEvent;
 import net.jradius.server.JRadiusRequest;
-import net.jradius.server.JRadiusServer;
 import net.jradius.server.event.SessionExpiredEvent;
-import org.ehcache.Cache;
-import org.ehcache.CacheManager;
-import org.ehcache.Status;
-import org.ehcache.config.CacheConfiguration;
-import org.ehcache.config.Configuration;
-import org.ehcache.config.builders.CacheConfigurationBuilder;
-import org.ehcache.config.builders.CacheManagerBuilder;
-import org.ehcache.config.builders.ExpiryPolicyBuilder;
-import org.ehcache.config.builders.ResourcePoolsBuilder;
-import org.ehcache.event.CacheEvent;
-import org.ehcache.event.CacheEventListener;
-import org.ehcache.event.EventType;
-import org.ehcache.xml.XmlConfiguration;
+import net.sf.ehcache.Cache;
+import net.sf.ehcache.CacheException;
+import net.sf.ehcache.CacheManager;
+import net.sf.ehcache.Ehcache;
+import net.sf.ehcache.Element;
+import net.sf.ehcache.Status;
+import net.sf.ehcache.event.CacheEventListener;
+
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 
-public class JRadiusSessionManager
-    implements InitializingBean, ApplicationContextAware, CacheEventListener<Object, Object> {
+public class JRadiusSessionManager implements InitializingBean, ApplicationContextAware, CacheEventListener
+{
     private static JRadiusSessionManager defaultManager;
 
-    private static Map<String, JRadiusSessionManager> managers = new HashMap<String, JRadiusSessionManager>();
+    private static HashMap<String, JRadiusSessionManager> managers = new HashMap<String, JRadiusSessionManager>();
 
-    private Map<String, SessionKeyProvider> providers = new HashMap<String, SessionKeyProvider>();
-    private Map<String, SessionFactory> factories = new HashMap<String, SessionFactory>();
+    private HashMap<String, SessionKeyProvider> providers = new HashMap<String, SessionKeyProvider>();
+    private HashMap<String, SessionFactory> factories = new HashMap<String, SessionFactory>();
 
     private ApplicationContext applicationContext;
 
@@ -70,8 +63,8 @@ public class JRadiusSessionManager
     
 
     private CacheManager cacheManager;
-    private Cache<Serializable, JRadiusSession> sessionCache;
-    private Cache<Serializable, JRadiusLogEntry> logCache;
+    private Cache sessionCache;
+    private Cache logCache;
 
     private EventDispatcher eventDispatcher;
 
@@ -89,7 +82,7 @@ public class JRadiusSessionManager
      
         if (name != null)
         {
-            manager = managers.get(name.toString());
+            manager = (JRadiusSessionManager) managers.get(name);
         }
 
         if (manager == null) 
@@ -173,50 +166,44 @@ public class JRadiusSessionManager
 
     public void shutdown()
     {
-	if (cacheManager != null && cacheManager.getStatus() == Status.AVAILABLE)
+	if (cacheManager != null && cacheManager.getStatus() == Status.STATUS_ALIVE)
         {
-            cacheManager.close();
+            cacheManager.shutdown();
         }
     }
     
     public void afterPropertiesSet() throws Exception
     {
-	if (cacheManager == null)
+	if ((sessionCache == null || logCache == null) && cacheManager == null)
         {
-            URL url = JRadiusServer.class.getResource("/ehcache.xml");
-            if (url != null) {
-                RadiusLog.info("Loading EHCache configuration from " + url);
-                Configuration xmlConfig = new XmlConfiguration(url);
-                cacheManager = CacheManagerBuilder.newCacheManager(xmlConfig);
-            } else {
-                RadiusLog.warn("ehcache.xml not found, using programmatic configuration.");
-                cacheManager = CacheManagerBuilder.newCacheManagerBuilder().build();
+		throw new RuntimeException("cacheManager required");
+        }
+
+        if (sessionCache == null)
+        {
+            sessionCache = cacheManager.getCache(cacheName);
+
+            if (sessionCache == null)
+            {
+		sessionCache = new Cache(cacheName, 1000, true, false, maxInactiveInterval, maxInactiveInterval);
+                cacheManager.addCache(sessionCache);
             }
-            cacheManager.init();
         }
 
-        sessionCache = getOrCreateCache(cacheName, Serializable.class, JRadiusSession.class, 1000);
-        logCache = getOrCreateCache(logCacheName, Serializable.class, JRadiusLogEntry.class, 100);
+        if (logCache == null)
+        {
+            logCache = cacheManager.getCache(logCacheName);
 
-        sessionCache.getRuntimeConfiguration().registerCacheEventListener(this, org.ehcache.event.EventOrdering.UNORDERED, org.ehcache.event.EventFiring.ASYNCHRONOUS, EventType.EXPIRED);
-        logCache.getRuntimeConfiguration().registerCacheEventListener(this, org.ehcache.event.EventOrdering.UNORDERED, org.ehcache.event.EventFiring.ASYNCHRONOUS, EventType.EXPIRED);
-    }
-
-    private <K extends Serializable, V extends Serializable> Cache<K, V> getOrCreateCache(String alias, Class<K> keyType, Class<V> valueType, long heapSize) {
-        Cache<K, V> cache = cacheManager.getCache(alias, keyType, valueType);
-        if (cache == null) {
-            RadiusLog.info("Cache '" + alias + "' not found in ehcache.xml, creating programmatically.");
-
-            CacheConfiguration<K, V> cacheConfig = CacheConfigurationBuilder.newCacheConfigurationBuilder(
-                keyType, valueType, ResourcePoolsBuilder.heap(heapSize))
-                .withExpiry(ExpiryPolicyBuilder.timeToLiveExpiration(Duration.ofSeconds(maxInactiveInterval)))
-                .build();
-
-            cache = cacheManager.createCache(alias, cacheConfig);
+            if (logCache == null)
+            {
+		logCache = new Cache(logCacheName, 100, true, false, maxInactiveInterval, maxInactiveInterval);
+                cacheManager.addCache(logCache);
+            }
         }
-        return cache;
-    }
 
+        sessionCache.getCacheEventNotificationService().registerListener(this);
+        logCache.getCacheEventNotificationService().registerListener(this);
+    }
 
     /**
      * Sets the key provider for this session manager. The
@@ -254,8 +241,8 @@ public class JRadiusSessionManager
      */
     public SessionKeyProvider getSessionKeyProvider(Object name)
     {
-        SessionKeyProvider provider = providers.get(name);
-        if (provider == null && name != null) provider = providers.get(null);
+        SessionKeyProvider provider = (SessionKeyProvider)providers.get(name);
+        if (provider == null && name != null) provider = (SessionKeyProvider)providers.get(null);
         return provider;
     }
     
@@ -266,8 +253,8 @@ public class JRadiusSessionManager
      */
     public SessionFactory getSessionFactory(Object name)
     {
-        SessionFactory factory = factories.get(name);
-        if (factory == null && name != null) factory = factories.get(null);
+        SessionFactory factory = (SessionFactory)factories.get(name);
+        if (factory == null && name != null) factory = (SessionFactory)factories.get(null);
         return factory;
     }
     
@@ -375,14 +362,20 @@ public class JRadiusSessionManager
     {
         JRadiusSession session = (JRadiusSession) getSessionFactory(request.getSender()).newSession(request);
         session.setJRadiusKey((String)key);
-        put((Serializable)session.getJRadiusKey(), session);
-        put((Serializable)session.getSessionKey(), session);
+        put(session.getJRadiusKey(), session);
+        put(session.getSessionKey(), session);
         return session;
     }
 
     public JRadiusSession getSession(JRadiusRequest request, Serializable key) throws RadiusException
     {
-        JRadiusSession session = sessionCache.get(key);
+        Element element = sessionCache.get(key);
+        JRadiusSession session = null;
+
+        if (element != null)
+        {
+		session = (JRadiusSession) element.getValue();
+        }
 
         if (session == null && request != null)
         {
@@ -440,10 +433,10 @@ public class JRadiusSessionManager
         sessionCache.remove(key);
     }
 
-    private void put(Serializable key, JRadiusSession value)
+    private void put(Object key, Object value)
     {
         RadiusLog.debug("Adding session key: " + key);
-        sessionCache.put(key, value);
+        sessionCache.put(new Element(key, value));
     }
 
     public int getMaxInactiveInterval()
@@ -486,30 +479,57 @@ public class JRadiusSessionManager
         this.cacheName = cacheName;
     }
 
-    @Override
-    public void onEvent(CacheEvent<?, ?> event) {
-        if (event.getType() == EventType.EXPIRED) {
-            Object value = event.getOldValue();
-            if (value != null && value instanceof JRadiusSession)
+    public void dispose()
+    {
+    }
+
+    public void notifyElementEvicted(Ehcache cache, Element element)
+    {
+    }
+
+    public void notifyElementExpired(Ehcache cache, Element element)
+    {
+        Object value = element.getValue();
+        if (value != null && value instanceof JRadiusSession)
+        {
+            JRadiusSession session = (JRadiusSession) value;
+            RadiusLog.debug("Expired session: " + session.getSessionKey());
+            if (eventDispatcher != null)
             {
-                JRadiusSession session = (JRadiusSession) value;
-                RadiusLog.debug("Expired session: " + session.getSessionKey());
-                if (eventDispatcher != null)
-                {
-                    SessionExpiredEvent evt = new SessionExpiredEvent(session);
-                    evt.setApplicationContext(applicationContext);
-                    eventDispatcher.post(evt);
-                }
+                SessionExpiredEvent evt = new SessionExpiredEvent(session);
+                evt.setApplicationContext(applicationContext);
+                eventDispatcher.post(evt);
             }
         }
     }
 
-    public Cache<Serializable, JRadiusSession> getSessionCache()
+    public void notifyElementPut(Ehcache cache, Element element) throws CacheException
+    {
+    }
+
+    public void notifyElementRemoved(Ehcache cache, Element element) throws CacheException
+    {
+    }
+
+    public void notifyElementUpdated(Ehcache cache, Element element) throws CacheException
+    {
+    }
+
+    public void notifyRemoveAll(Ehcache cache)
+    {
+    }
+
+    public Object clone() throws CloneNotSupportedException
+    {
+	throw new CloneNotSupportedException();
+    }
+
+    public Ehcache getSessionCache()
     {
         return sessionCache;
     }
 
-    public void setSessionCache(Cache<Serializable, JRadiusSession> sessionCache)
+    public void setSessionCache(Cache sessionCache)
     {
         this.sessionCache = sessionCache;
     }

@@ -4,14 +4,15 @@ import java.io.IOException;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
-import org.ehcache.Cache;
-import org.ehcache.CacheManager;
+
+import net.sf.ehcache.Cache;
+import net.sf.ehcache.CacheManager;
 
 public class RadiusMultiClient extends RadiusClient 
 {
 	CacheManager cacheManager;
 	String requestCacheName;
-	Cache<java.io.Serializable, Object> requestCache;
+	Cache requestCache;
 	
 	public RadiusMultiClient() throws IOException 
 	{

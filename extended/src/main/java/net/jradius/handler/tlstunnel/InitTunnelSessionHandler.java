@@ -17,10 +17,12 @@
  * Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  *
  */
+
 package net.jradius.handler.tlstunnel;
 
 import java.util.HashMap;
 import java.util.StringTokenizer;
+
 import net.jradius.dictionary.Attr_Realm;
 import net.jradius.dictionary.Attr_UserName;
 import net.jradius.dictionary.vsa_freeradius.Attr_FreeRADIUSProxiedTo;
@@ -33,7 +35,8 @@ import net.jradius.session.JRadiusSession;
 import net.jradius.session.JRadiusSessionManager;
 import net.jradius.session.RadiusSessionKeyProvider;
 import net.jradius.session.RadiusSessionSupport;
-import org.ehcache.Cache;
+import net.sf.ehcache.Cache;
+import net.sf.ehcache.Element;
 
 /**
  * Tunnel Session Initialization Handler.
@@ -41,8 +44,8 @@ import org.ehcache.Cache;
  */
 public class InitTunnelSessionHandler extends RadiusSessionHandler
 {
-    private Cache<Object, String> tlsTunnels;
-    private HashMap<String, String> realms = new HashMap<String, String>();
+    private Cache tlsTunnels;
+    private HashMap realms = new HashMap();
     
     /**
      * This handler is to be chained before the actual InitSessionHandler. 
@@ -79,9 +82,9 @@ public class InitTunnelSessionHandler extends RadiusSessionHandler
             // If we are proxy-ing the request to ourselves, 
 	        // this is an inner-tunnel authentication.
 	        RadiusSessionKeyProvider skp = (RadiusSessionKeyProvider)JRadiusSessionManager.getManager(request.getSender()).getSessionKeyProvider(request.getSender());
-	        String sessionKey = tlsTunnels.get(skp.getTunneledRequestKey(request));
-            if (sessionKey == null) return false;
-
+	        Element element = tlsTunnels.get(skp.getTunneledRequestKey(request));
+            if (element == null) return false;
+            String sessionKey = (String)element.getValue();
 	        if (sessionKey == null) 
 	        {
 	            request.setReturnValue(JRadiusServer.RLM_MODULE_REJECT);
@@ -136,19 +139,19 @@ public class InitTunnelSessionHandler extends RadiusSessionHandler
 
     public boolean isLocalRealm(String realm)
     {
-        String s = realms.get(realm.trim().toLowerCase());
+        String s = (String)realms.get(realm.trim().toLowerCase());
         if (s == null) return false;
         return "local".equals(s);
     }
 
     public boolean isSecureRealm(String realm)
     {
-        String s = realms.get(realm.trim().toLowerCase());
+        String s = (String)realms.get(realm.trim().toLowerCase());
         if (s == null) return false;
         return "secure".equals(s);
     }
 
-    public void setTlsTunnels(Cache<Object, String> tlsTunnels)
+    public void setTlsTunnels(Cache tlsTunnels)
     {
         this.tlsTunnels = tlsTunnels;
     }

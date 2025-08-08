@@ -17,10 +17,12 @@
  * Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  *
  */
+
 package net.jradius.handler.tlstunnel;
 
 import java.util.HashMap;
 import java.util.StringTokenizer;
+
 import net.jradius.dictionary.Attr_EAPType;
 import net.jradius.dictionary.Attr_ProxyToRealm;
 import net.jradius.dictionary.Attr_UserName;
@@ -34,8 +36,10 @@ import net.jradius.server.JRadiusRequest;
 import net.jradius.session.JRadiusSession;
 import net.jradius.session.JRadiusSessionManager;
 import net.jradius.session.RadiusSessionKeyProvider;
+import net.sf.ehcache.Cache;
+import net.sf.ehcache.Element;
+
 import org.apache.commons.chain.Catalog;
-import org.ehcache.Cache;
 
 /**
  * TLS Tunnel Termination Authorization Handler
@@ -43,8 +47,8 @@ import org.ehcache.Cache;
  */
 public class AuthorizeHandler extends RadiusSessionHandler
 {
-    private HashMap<String, String> terminatedRealms = new HashMap<String, String>();
-    private Cache<Object, String> tlsTunnels;
+    private HashMap terminatedRealms = new HashMap();
+    private Cache tlsTunnels;
     private String anonUserName;
     private String chainName;
     
@@ -98,7 +102,7 @@ public class AuthorizeHandler extends RadiusSessionHandler
                 ci.remove(Attr_ProxyToRealm.TYPE);
                 
                 // Record the session as a tls tunnel
-                tlsTunnels.put(skp.getTunneledRequestKey(request), session.getSessionKey());
+                tlsTunnels.put(new Element(skp.getTunneledRequestKey(request), session.getSessionKey()));
 
                 RadiusLog.info("EAP-TTLS Termination: username = " + username + ", session = " + session.getSessionKey());
 
@@ -145,7 +149,7 @@ public class AuthorizeHandler extends RadiusSessionHandler
         this.chainName = chainName;
     }
 
-    public void setTlsTunnels(Cache<Object, String> tlsTunnels)
+    public void setTlsTunnels(Cache tlsTunnels)
     {
         this.tlsTunnels = tlsTunnels;
     }

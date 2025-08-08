@@ -43,13 +43,21 @@
     <dependency>
       <groupId>org.springframework</groupId>
       <artifactId>spring-context-support</artifactId>
-      <version>4.3.30.RELEASE</version>
+      <version>3.0.5.RELEASE</version>
     </dependency>
 
   </dependencies>
   
   <build>
     <plugins>
+      <plugin>
+	<groupId>org.apache.maven.plugins</groupId>
+	<artifactId>maven-compiler-plugin</artifactId>
+	<configuration>
+	  <source>1.5</source>
+	  <target>1.5</target>
+	</configuration>
+      </plugin>
       <plugin>
 	<groupId>org.apache.maven.plugins</groupId>
 	<artifactId>maven-dependency-plugin</artifactId>
@@ -71,7 +79,6 @@
       </plugin> 
       <plugin>
         <artifactId>maven-assembly-plugin</artifactId>
-        <version>3.7.1</version>
         <configuration>
           <descriptors>
             <descriptor>assembly.xml</descriptor>
@@ -82,7 +89,7 @@
             <id>make-assembly</id>
             <phase>package</phase>
             <goals>
-              <goal>single</goal>
+              <goal>attached</goal>
 	    </goals>
           </execution>
         </executions>
