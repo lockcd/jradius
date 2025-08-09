@@ -12,3 +12,15 @@ obj/
 /.vs/JRadius
 /.vs
 
+/packages
+/packages_lib
+/.settings
+/.project
+/.classpath
+/.gitignore
+/.git
+/.svn
+/.hg
+/.hgignore
+/.hgcheck
+/.hgtags

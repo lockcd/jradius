@@ -109,7 +109,12 @@ namespace net.jradius.core.server
         {
             for (var j = 0; j < listenerConfig.NumberOfThreads; j++)
             {
-                var processor = (Processor)_serviceProvider.GetRequiredService(Type.GetType(listenerConfig.ProcessorClassName));
+                var processorType = Type.GetType(listenerConfig.ProcessorClassName);
+                var processor = (Processor)_serviceProvider.GetService(processorType);
+                if (processor == null)
+                {
+                    throw new InvalidOperationException($"Service not found for type {listenerConfig.ProcessorClassName}");
+                }
                 processor.RequestQueue = queue;
                 _logger.LogInformation($"Created processor {processor.Name}");
                 SetPacketHandlersForProcessor(listenerConfig, processor);
@@ -153,7 +158,12 @@ namespace net.jradius.core.server
 
         private void CreateListenerWithConfigAndQueue(ListenerConfigurationItem listenerConfig, BlockingCollection<ListenerRequest> queue)
         {
-            var listener = (Listener)_serviceProvider.GetRequiredService(Type.GetType(listenerConfig.ClassName));
+            var listenerType = Type.GetType(listenerConfig.ClassName);
+            var listener = (Listener)_serviceProvider.GetService(listenerType);
+            if (listener == null)
+            {
+                throw new InvalidOperationException($"Service not found for type {listenerConfig.ClassName}");
+            }
             listener.Configuration = listenerConfig;
             listener.RequestQueue = queue;
 

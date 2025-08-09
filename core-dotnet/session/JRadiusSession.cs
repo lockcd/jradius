@@ -1,5 +1,4 @@
 using System;
-using net.jradius.core.exception;
 using net.jradius.core.log;
 using net.jradius.core.server;
 using net.jradius.core.server.@event;
