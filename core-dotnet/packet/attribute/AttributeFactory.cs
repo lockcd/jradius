@@ -1,4 +1,6 @@
+using Microsoft.Extensions.ObjectPool;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 
 namespace JRadius.Core.Packet.Attribute
@@ -9,6 +11,9 @@ namespace JRadius.Core.Packet.Attribute
         private static Dictionary<long, Type> _vendorMap = new Dictionary<long, Type>();
         private static Dictionary<long, VendorValue> _vendorValueMap = new Dictionary<long, VendorValue>();
         private static Dictionary<string, Type> _attributeNameMap = new Dictionary<string, Type>();
+
+        private static readonly ConcurrentDictionary<long, ObjectPool<RadiusAttribute>> _poolCache = new ConcurrentDictionary<long, ObjectPool<RadiusAttribute>>();
+        private static readonly DefaultObjectPoolProvider _poolProvider = new DefaultObjectPoolProvider();
 
         public sealed class VendorValue
         {
@@ -34,7 +39,6 @@ namespace JRadius.Core.Packet.Attribute
             }
             catch (Exception e)
             {
-                // In a real application, we would use a logger here.
                 Console.WriteLine(e);
                 return false;
             }
@@ -70,6 +74,68 @@ namespace JRadius.Core.Packet.Attribute
             return true;
         }
 
-        // TODO: Implement the rest of the class, including the object pooling mechanism.
+        public static RadiusAttribute NewAttribute(long key)
+        {
+            var pool = _poolCache.GetOrAdd(key, k => _poolProvider.Create(new RadiusAttributePooledObjectPolicy(k, _attributeMap, _vendorValueMap)));
+            return pool.Get();
+        }
+
+        public static void Recycle(RadiusAttribute a)
+        {
+            if (a == null) return;
+            var key = a.GetFormattedType();
+            if (_poolCache.TryGetValue(key, out var pool))
+            {
+                pool.Return(a);
+            }
+        }
+    }
+
+    public class RadiusAttributePooledObjectPolicy : PooledObjectPolicy<RadiusAttribute>
+    {
+        private readonly long _key;
+        private readonly Dictionary<long, Type> _attributeMap;
+        private readonly Dictionary<long, AttributeFactory.VendorValue> _vendorValueMap;
+
+        public RadiusAttributePooledObjectPolicy(long key, Dictionary<long, Type> attributeMap, Dictionary<long, AttributeFactory.VendorValue> vendorValueMap)
+        {
+            _key = key;
+            _attributeMap = attributeMap;
+            _vendorValueMap = vendorValueMap;
+        }
+
+        public override RadiusAttribute Create()
+        {
+            var vendor = _key >> 16;
+            var type = _key & 0xFFFF;
+
+            if (vendor != 0)
+            {
+                if (_vendorValueMap.TryGetValue(vendor, out var v))
+                {
+                    if (v.AttributeMap.TryGetValue(type, out var c))
+                    {
+                        return (RadiusAttribute)Activator.CreateInstance(c);
+                    }
+                }
+                // TODO: return new Attr_UnknownVSAttribute(vendor, type);
+                return null;
+            }
+            else
+            {
+                if (_attributeMap.TryGetValue(type, out var c))
+                {
+                    return (RadiusAttribute)Activator.CreateInstance(c);
+                }
+                // TODO: return new Attr_UnknownAttribute(type);
+                return null;
+            }
+        }
+
+        public override bool Return(RadiusAttribute obj)
+        {
+            // TODO: Reset the object state
+            return true;
+        }
     }
 }
