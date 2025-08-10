@@ -14,7 +14,13 @@ namespace JRadius.Core.Client
 
         static RadiusClient()
         {
-            // TODO: Register authenticators
+            RegisterAuthenticator("pap", typeof(PAPAuthenticator));
+            RegisterAuthenticator("chap", typeof(CHAPAuthenticator));
+            RegisterAuthenticator("mschapv1", typeof(MSCHAPv1Authenticator));
+            RegisterAuthenticator("mschapv2", typeof(MSCHAPv2Authenticator));
+            RegisterAuthenticator("mschap", typeof(MSCHAPv2Authenticator));
+            RegisterAuthenticator("eap-md5", typeof(EAPMD5Authenticator));
+            RegisterAuthenticator("eap-mschapv2", typeof(EAPMSCHAPv2Authenticator));
         }
 
         public RadiusClient()
@@ -79,10 +85,34 @@ namespace JRadius.Core.Client
             _authenticators[name] = c;
         }
 
-        public static void RegisterAuthenticator(string name, string className)
+        public static IRadiusAuthenticator GetAuthProtocol(string protocolName)
         {
-            var c = Type.GetType(className);
-            _authenticators[name] = c;
+            // TODO: Implement property setting from protocolName
+            if (_authenticators.TryGetValue(protocolName.ToLower(), out var type))
+            {
+                return (IRadiusAuthenticator)Activator.CreateInstance(type);
+            }
+            return null;
+        }
+
+        public RadiusResponse Authenticate(AccessRequest p, IRadiusAuthenticator auth, int retries)
+        {
+            auth ??= new PAPAuthenticator();
+            auth.SetupRequest(this, p);
+            auth.ProcessRequest(p);
+
+            while (true)
+            {
+                var reply = _transport.SendReceive(p, retries);
+                if (reply is AccessChallenge challenge)
+                {
+                    auth.ProcessChallenge(p, challenge);
+                }
+                else
+                {
+                    return reply;
+                }
+            }
         }
 
         public int GetAcctPort()
