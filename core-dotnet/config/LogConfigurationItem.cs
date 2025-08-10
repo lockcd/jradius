@@ -2,11 +2,11 @@ using System.Xml.Linq;
 
 namespace JRadius.Core.Config
 {
-    public class DictionaryConfigurationItem : ConfigurationItem
+    public class LogConfigurationItem : ConfigurationItem
     {
-        public static string XML_KEY = "dictionary";
+        public static string XML_KEY = "radius-logger";
 
-        public DictionaryConfigurationItem(XElement node)
+        public LogConfigurationItem(XElement node)
             : base(node)
         {
         }
