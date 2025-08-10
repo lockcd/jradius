@@ -1,5 +1,7 @@
 using JRadius.Core.Config;
 using JRadius.Core.Server;
+using JRadius.Extended.Util;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
@@ -49,7 +51,9 @@ namespace JRadius.Server
 
             if (props.TryGetValue("useSSL", out var useSSL) && bool.Parse(useSSL) || _requiresSSL)
             {
-                // TODO: Implement SSL configuration
+                var serverCertificate = new X509Certificate2(props["keyStore"], props["keyStorePassword"]);
+                _serverSocket = new TcpListener(IPAddress.Any, _port);
+                // TODO: The SSL logic needs to be integrated with the socket listening loop.
                 _usingSSL = true;
             }
             else
@@ -75,10 +79,17 @@ namespace JRadius.Server
             _serverSocket.Start(_backlog);
             while (_active)
             {
-                var socket = await _serverSocket.AcceptSocketAsync();
+                var client = await _serverSocket.AcceptTcpClientAsync();
+                if (_usingSSL)
+                {
+                    var sslStream = new SslStream(client.GetStream(), false);
+                    // TODO: AuthenticateAsServer with options
+                    // sslStream.AuthenticateAsServer(serverCertificate, _sslNeedClientAuth, _sslEnabledProtocols, false);
+                }
+
                 if (_keepAlive)
                 {
-                    var keepAliveListener = new KeepAliveListener(socket, this, _queue);
+                    var keepAliveListener = new KeepAliveListener(client.Client, this, _queue);
                     keepAliveListener.Start();
                     lock (_keepAliveListeners)
                     {
