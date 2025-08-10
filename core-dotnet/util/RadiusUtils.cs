@@ -100,5 +100,22 @@ namespace JRadius.Core.Util
                 return md5.ComputeHash(buffer);
             }
         }
+
+        public static byte[] MakeRFC2866RequestAuthenticator(string sharedSecret, byte code, byte identifier, int length, byte[] requestAttributes, int attributesOffset, int attributesLength)
+        {
+            using (var md5 = MD5.Create())
+            {
+                var requestAuthenticator = new byte[16];
+                var buffer = new byte[4 + requestAuthenticator.Length + attributesLength + sharedSecret.Length];
+                buffer[0] = code;
+                buffer[1] = identifier;
+                buffer[2] = (byte)(length >> 8);
+                buffer[3] = (byte)(length & 0xff);
+                Buffer.BlockCopy(requestAuthenticator, 0, buffer, 4, requestAuthenticator.Length);
+                Buffer.BlockCopy(requestAttributes, attributesOffset, buffer, 4 + requestAuthenticator.Length, attributesLength);
+                Buffer.BlockCopy(Encoding.UTF8.GetBytes(sharedSecret), 0, buffer, 4 + requestAuthenticator.Length + attributesLength, sharedSecret.Length);
+                return md5.ComputeHash(buffer);
+            }
+        }
     }
 }
