@@ -2,7 +2,7 @@ namespace JRadius.Core.Realm
 {
     public class JRadiusRealm
     {
-        public bool IsLocal { get; set; }
+        public bool IsLocal => Server == "LOCAL";
         public int AcctPort { get; set; }
         public int AuthPort { get; set; }
         public string Realm { get; set; }

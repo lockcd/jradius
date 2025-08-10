@@ -1,67 +1,156 @@
+using System;
 using System.Collections.Generic;
+using System.Linq;
 
-namespace net.jradius.core.packet.attribute
+namespace JRadius.Core.Packet.Attribute
 {
     public class AttributeList
     {
-        private readonly List<RadiusAttribute> _attributes = new List<RadiusAttribute>();
-
-        public void Add(RadiusAttribute attribute, bool overwrite)
-        {
-            if (overwrite)
-            {
-                // In a real implementation, we would remove existing attributes of the same type
-            }
-            _attributes.Add(attribute);
-        }
+        private List<RadiusAttribute> _attributeOrderList = new List<RadiusAttribute>();
+        private Dictionary<long, object> _attributeMap = new Dictionary<long, object>();
 
         public void Add(AttributeList list)
         {
-            // In a real implementation, we would add all attributes from the list
+            Copy(list, true);
         }
 
-        public void Remove(RadiusAttribute attribute)
+        public void Copy(AttributeList list, bool pool)
         {
-            _attributes.Remove(attribute);
+            if (list != null)
+            {
+                foreach (var a in list.GetAttributeList())
+                {
+                    // TODO: Implement pooling
+                    _Add(a, false);
+                }
+            }
+        }
+
+        public void Add(RadiusAttribute a)
+        {
+            Add(a, true);
+        }
+
+        private void _Add(RadiusAttribute a, bool overwrite)
+        {
+            var key = a.GetFormattedType();
+            var o = _attributeMap.GetValueOrDefault(key);
+            _attributeOrderList.Add(a);
+
+            if (o == null || overwrite)
+            {
+                Remove(key);
+                _attributeMap[key] = a;
+            }
+            else
+            {
+                if (o is List<RadiusAttribute> list)
+                {
+                    list.Add(a);
+                }
+                else
+                {
+                    var newList = new List<RadiusAttribute> { (RadiusAttribute)o, a };
+                    _attributeMap[key] = newList;
+                }
+            }
+        }
+
+        public void Add(RadiusAttribute a, bool overwrite)
+        {
+            if (a is SubAttribute subAttribute)
+            {
+                try
+                {
+                    var parentType = subAttribute.ParentClass;
+                    var pAttribute = (RadiusAttribute)Get(parentType.GetProperty("FormattedType", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public).GetValue(null, null), true);
+
+                    if (pAttribute == null)
+                    {
+                        pAttribute = (RadiusAttribute)Activator.CreateInstance(parentType);
+                        Add(pAttribute);
+                    }
+                    ((VSAWithSubAttributes)pAttribute).GetSubAttributes()._Add(a, false);
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e);
+                }
+            }
+            else
+            {
+                _Add(a, overwrite);
+            }
+        }
+
+        public void Remove(RadiusAttribute a)
+        {
+            if (a != null)
+            {
+                Remove(a.GetFormattedType());
+            }
         }
 
         public void Remove(long attributeType)
         {
-            // In a real implementation, we would remove attributes of the specified type
+            var key = attributeType;
+            if (_attributeMap.Remove(key, out var o))
+            {
+                if (o is List<RadiusAttribute> list)
+                {
+                    foreach (var item in list)
+                    {
+                        RemoveFromList(item);
+                    }
+                }
+                else
+                {
+                    RemoveFromList(o);
+                }
+            }
         }
 
-        public void Copy(AttributeList list, bool recyclable)
+        public void Clear()
         {
-            // In a real implementation, we would copy attributes from the list
+            // TODO: Implement pooling
+            _attributeMap.Clear();
+            _attributeOrderList.Clear();
         }
 
-        public RadiusAttribute Get(long type)
+        private void RemoveFromList(object o)
         {
-            // In a real implementation, we would find and return the attribute
+            for (int i = 0; i < _attributeOrderList.Count; i++)
+            {
+                if (_attributeOrderList[i] == o)
+                {
+                    _attributeOrderList.RemoveAt(i);
+                    // TODO: Implement pooling
+                    return;
+                }
+            }
+        }
+
+        public int GetSize()
+        {
+            return _attributeOrderList.Count;
+        }
+
+        public object Get(long type, bool single)
+        {
+            if (_attributeMap.TryGetValue(type, out var o))
+            {
+                if (o is List<RadiusAttribute> list)
+                {
+                    return single ? list.FirstOrDefault() : list;
+                }
+                return o;
+            }
             return null;
         }
 
-        public object[] GetArray(long type)
+        public List<RadiusAttribute> GetAttributeList()
         {
-            // In a real implementation, we would find and return all attributes of the specified type
-            return new object[0];
-        }
-
-        public RadiusAttribute Get(string aName)
-        {
-            // In a real implementation, we would find and return the attribute
-            return null;
-        }
-
-        public object GetValue(long type)
-        {
-            // In a real implementation, we would find and return the attribute value
-            return null;
-        }
-
-        public string ToString(bool nonStandardAtts, bool unknownAttrs)
-        {
-            return "AttributeList";
+            return _attributeOrderList;
         }
     }
 }

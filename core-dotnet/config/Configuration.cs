@@ -1,4 +1,5 @@
 using JRadius.Core.Handler.Chain;
+using JRadius.Core.Realm;
 using JRadius.Core.Session;
 using Microsoft.Extensions.Logging;
 using System;
@@ -193,7 +194,7 @@ namespace JRadius.Core.Config
                     {
                         _logger.LogDebug($"Session Factory ({requester}): {sessionFactory}");
                         var factory = (ISessionFactory)GetBean(sessionFactory);
-                        // factory.SetConfig(node); // TODO: ISessionFactory needs a SetConfig method
+                        factory.SetConfig(node);
                         JRadiusSessionManager.GetManager(requester).SetSessionFactory(requester, factory);
                     }
                     catch (Exception e)
@@ -210,9 +211,26 @@ namespace JRadius.Core.Config
             var list = _root.Elements(REALM_MANAGER_KEY);
             foreach (var node in list)
             {
-                // TODO: Implement this method. Requires GetBean and realm classes.
+                var requester = node.Element(REQUESTER_KEY)?.Value;
+                var realmFactory = node.Element(REALM_FACTORY_KEY)?.Value;
+
+                if (realmFactory != null)
+                {
+                    try
+                    {
+                        _logger.LogDebug($"Realm Factory ({requester}): {realmFactory}");
+                        var factory = (IRealmFactory)GetBean(realmFactory);
+                        factory.SetConfig(node);
+                        JRadiusRealmManager.GetManager().SetRealmFactory(requester, factory);
+                    }
+                    catch (Exception e)
+                    {
+                        _logger.LogError(e, e.Message);
+                    }
+                }
             }
         }
+
 
         public static object GetBean(string name)
         {
