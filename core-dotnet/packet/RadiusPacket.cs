@@ -1,27 +1,27 @@
+using JRadius.Core.Packet.Attribute;
 using System;
 using System.Text;
-using net.jradius.core.packet.attribute;
-using net.jradius.core.packet.attribute.value;
+using System.Threading;
 
-namespace net.jradius.core.packet
+namespace JRadius.Core.Packet
 {
     public abstract class RadiusPacket
     {
-        private static readonly object NextPacketIdLock = new object();
+        public const int MIN_PACKET_LENGTH = 20;
+        public const int MAX_PACKET_LENGTH = 4096;
+        public const short RADIUS_HEADER_LENGTH = 20;
+
         private static int _nextPacketId = 1;
+        private static readonly object _nextPacketIdLock = new object();
 
-        public const int MinPacketLength = 20;
-        public const int MaxPacketLength = 4096;
-        public const short RadiusHeaderLength = 20;
+        protected int _code;
+        protected int _identifier = -1;
+        protected byte[] _authenticator;
 
-        protected int code;
-        protected int identifier = -1;
-        protected byte[] authenticator;
+        protected readonly AttributeList _attributes = new AttributeList();
 
-        protected readonly AttributeList attributes = new AttributeList();
-
-        protected bool recyclable;
-        protected bool recycled;
+        protected bool _recyclable;
+        protected bool _recycled;
 
         public RadiusPacket()
         {
@@ -31,25 +31,25 @@ namespace net.jradius.core.packet
         {
             if (list != null)
             {
-                attributes.Copy(list, recyclable);
+                _attributes.Copy(list, _recyclable);
             }
         }
 
         public void SetCode(int code)
         {
-            this.code = (byte)code;
+            _code = code;
         }
 
-        public int Code
+        public int GetCode()
         {
-            get { return code; }
+            return _code;
         }
 
         public void AddAttribute(RadiusAttribute attribute)
         {
             if (null != attribute)
             {
-                attributes.Add(attribute, false);
+                _attributes.Add(attribute, false);
             }
         }
 
@@ -57,148 +57,96 @@ namespace net.jradius.core.packet
         {
             if (null != attribute)
             {
-                attributes.Add(attribute, true);
+                _attributes.Add(attribute, true);
             }
         }
 
         public void AddAttributes(AttributeList list)
         {
-            attributes.Add(list);
+            _attributes.Add(list);
         }
 
         public void RemoveAttribute(RadiusAttribute attribute)
         {
-            attributes.Remove(attribute);
+            _attributes.Remove(attribute);
         }
 
         public void RemoveAttribute(long attributeType)
         {
-            attributes.Remove(attributeType);
+            _attributes.Remove(attributeType);
         }
 
-        public int Identifier
+        public int GetIdentifier()
         {
-            get
+            if (_identifier < 0)
             {
-                if (this.identifier < 0)
-                {
-                    this.identifier = NewPacketId;
-                }
-                return this.identifier;
+                _identifier = GetNewPacketId();
             }
-            set { this.identifier = value; }
+            return _identifier;
         }
 
-        public AttributeList Attributes
+        public void SetIdentifier(int i)
         {
-            get { return attributes; }
+            _identifier = i;
         }
 
-        public virtual byte[] CreateAuthenticator(byte[] attributes, int offset, int attributsLength, String sharedSecret)
+        public AttributeList GetAttributes()
+        {
+            return _attributes;
+        }
+
+        public virtual byte[] CreateAuthenticator(byte[] attributes, int offset, int attributesLength, string sharedSecret)
         {
             return new byte[16];
         }
 
-        public virtual bool VerifyAuthenticator(String sharedSecret)
+        public virtual bool VerifyAuthenticator(string sharedSecret)
         {
             return false;
         }
 
-        public byte[] Authenticator
+        public void SetAuthenticator(byte[] authenticator)
         {
-            get { return this.authenticator; }
-            set { this.authenticator = value; }
+            _authenticator = authenticator;
         }
 
-        public byte[] GetAuthenticator(byte[] attributes, String sharedSecret)
+        public byte[] GetAuthenticator()
         {
-            if (this.authenticator == null)
-            {
-                if (sharedSecret != null)
-                    this.authenticator = CreateAuthenticator(attributes, 0, attributes.Length, sharedSecret);
-                else
-                    this.authenticator = new byte[16];
-            }
-
-            return this.authenticator;
-        }
-
-        public byte[] GetAuthenticator(byte[] attributes, int offset, int attributesLength, String sharedSecret)
-        {
-            if (this.authenticator == null)
-            {
-                if (sharedSecret != null)
-                    this.authenticator = CreateAuthenticator(attributes, offset, attributesLength, sharedSecret);
-                else
-                    this.authenticator = new byte[16];
-            }
-
-            return this.authenticator;
+            return _authenticator;
         }
 
         public RadiusAttribute FindAttribute(long type)
         {
-            return attributes.Get(type);
-        }
-
-        public object[] FindAttributes(long type)
-        {
-            return attributes.GetArray(type);
-        }
-
-        public RadiusAttribute FindAttribute(String aName)
-        {
-            return attributes.Get(aName);
+            return (RadiusAttribute)_attributes.Get(type, true);
         }
 
         public object GetAttributeValue(long type)
         {
-            return attributes.GetValue(type);
+            var attr = FindAttribute(type);
+            return attr?.GetValue().GetValueObject();
         }
 
-        public object GetAttributeValue(String aName)
+        private static int GetNewPacketId()
         {
-            RadiusAttribute attribute = FindAttribute(aName);
-            if (attribute != null)
+            lock (_nextPacketIdLock)
             {
-                AttributeValue value = attribute.Value;
-                if (value != null)
-                {
-                    return value.ValueObject;
-                }
+                _nextPacketId = (_nextPacketId + 1) % 255;
+                return _nextPacketId;
             }
-            return null;
-        }
-
-        private static int NewPacketId
-        {
-            get
-            {
-                lock (NextPacketIdLock)
-                {
-                    _nextPacketId = (_nextPacketId + 1) % 255;
-                    return _nextPacketId;
-                }
-            }
-        }
-
-        public string ToString(bool nonStandardAtts, bool unknownAttrs)
-        {
-            StringBuilder sb = new StringBuilder();
-            sb.Append("Class: ").Append(this.GetType().ToString()).Append("\n");
-            sb.Append("Attributes:\n");
-            sb.Append(attributes.ToString(nonStandardAtts, unknownAttrs));
-            return sb.ToString();
         }
 
         public override string ToString()
         {
-            return ToString(true, true);
+            var sb = new StringBuilder();
+            sb.AppendLine($"Class: {GetType()}");
+            sb.AppendLine("Attributes:");
+            sb.AppendLine(_attributes.ToString());
+            return sb.ToString();
         }
 
-        public bool IsRecyclable
+        public bool IsRecyclable()
         {
-            get { return recyclable; }
+            return _recyclable;
         }
     }
 }
