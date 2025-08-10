@@ -1,8 +1,5 @@
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Reflection;
 using System.Xml.Linq;
 
 namespace JRadius.Core.Handler.Chain
@@ -13,6 +10,18 @@ namespace JRadius.Core.Handler.Chain
         {
             var catalog = new JRCatalogBase();
             var doc = XDocument.Load(stream);
+
+            foreach (var defineElement in doc.Root.Elements("define"))
+            {
+                var name = defineElement.Attribute("name")?.Value;
+                var className = defineElement.Attribute("className")?.Value;
+                if (name != null && className != null)
+                {
+                    // For now, we will just store the class name.
+                    // The command will be created when it is requested.
+                    catalog.AddCommand(name, new LazyCommand(className));
+                }
+            }
 
             foreach (var chainElement in doc.Root.Elements("chain"))
             {
@@ -32,6 +41,26 @@ namespace JRadius.Core.Handler.Chain
                 catalog.AddCommand(chainName, chain);
             }
             return catalog;
+        }
+    }
+
+    public class LazyCommand : ICommand
+    {
+        private readonly string _className;
+        private ICommand _command;
+
+        public LazyCommand(string className)
+        {
+            _className = className;
+        }
+
+        public bool Execute(IContext context)
+        {
+            if (_command == null)
+            {
+                _command = (ICommand)Activator.CreateInstance(Type.GetType(_className));
+            }
+            return _command.Execute(context);
         }
     }
 }
