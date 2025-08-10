@@ -1,3 +1,5 @@
+using JRadius.Core.Handler;
+using JRadius.Core.Handler.Chain;
 using System.Collections.Generic;
 using System.Xml.Linq;
 
@@ -8,8 +10,8 @@ namespace JRadius.Core.Config
         public static string XML_LIST_KEY = "listeners";
         public static string XML_KEY = "listener";
 
-        private List<object> _requestHandlers; // TODO: Replace object with JRCommand
-        private List<object> _eventHandlers; // TODO: Replace object with JRCommand
+        private List<IJRCommand> _requestHandlers;
+        private List<IJRCommand> _eventHandlers;
         private string _processorClassName;
         private int _numberOfThreads;
 
@@ -26,16 +28,38 @@ namespace JRadius.Core.Config
                 _numberOfThreads = 1;
             }
 
-            // TODO: Implement the handler loading logic here.
-            // This requires the chain of responsibility pattern and the getBean method to be implemented.
+            LoadHandlers(node);
         }
 
-        public List<object> GetRequestHandlers()
+        private void LoadHandlers(XElement root)
+        {
+            _requestHandlers = new List<IJRCommand>();
+            var packetHandlers = root.Elements(PacketHandlerConfigurationItem.XML_KEY);
+            foreach (var node in packetHandlers)
+            {
+                var cfg = new PacketHandlerConfigurationItem(node);
+                var command = (IJRCommand)Configuration.GetBean(cfg.ClassName);
+                command.SetConfig(cfg);
+                _requestHandlers.Add(command);
+            }
+
+            _eventHandlers = new List<IJRCommand>();
+            var eventHandlers = root.Elements(HandlerConfigurationItem.XML_KEY);
+            foreach (var node in eventHandlers)
+            {
+                var cfg = new HandlerConfigurationItem(node);
+                var command = (IJRCommand)Configuration.GetBean(cfg.ClassName);
+                command.SetConfig(cfg);
+                _eventHandlers.Add(command);
+            }
+        }
+
+        public List<IJRCommand> GetRequestHandlers()
         {
             return _requestHandlers;
         }
 
-        public List<object> GetEventHandlers()
+        public List<IJRCommand> GetEventHandlers()
         {
             return _eventHandlers;
         }
