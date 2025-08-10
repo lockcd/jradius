@@ -3,47 +3,30 @@ using System.Text;
 
 namespace JRadius.Core.Util
 {
-    public class Hex
+    public static class Hex
     {
         private static readonly string[] pseudo = { "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C", "D", "E", "F" };
 
         public static byte[] HexStringToByteArray(string hex)
         {
-            if (hex.Length % 2 == 1)
-                throw new System.Exception("The binary key cannot have an odd number of digits");
-
-            byte[] arr = new byte[hex.Length >> 1];
-
-            for (int i = 0; i < hex.Length >> 1; ++i)
+            int len = hex.Length;
+            byte[] bin = new byte[len / 2];
+            for (int i = 0; i < len; i += 2)
             {
-                arr[i] = (byte)((GetHexVal(hex[i << 1]) << 4) + (GetHexVal(hex[(i << 1) + 1])));
+                bin[i / 2] = Convert.ToByte(hex.Substring(i, 2), 16);
             }
-
-            return arr;
+            return bin;
         }
 
-        public static int GetHexVal(char hex)
+        public static string ByteArrayToHexString(byte[] in_Renamed)
         {
-            int val = (int)hex;
-            //For uppercase A-F letters:
-            //return val - (val < 58 ? 48 : 55);
-            //For lowercase a-f letters:
-            //return val - (val < 58 ? 48 : 87);
-            //Or the two combined, but a bit slower:
-            return val - (val < 58 ? 48 : (val < 97 ? 55 : 87));
-        }
-
-        public static string ByteArrayToHexString(byte[] inBytes)
-        {
-            if (inBytes == null || inBytes.Length <= 0)
+            if (in_Renamed == null || in_Renamed.Length <= 0)
                 return null;
 
-            StringBuilder sb = new StringBuilder(inBytes.Length * 2);
-
-            foreach (byte b in inBytes)
+            var sb = new StringBuilder(in_Renamed.Length * 2);
+            foreach (byte b in in_Renamed)
             {
-                sb.Append(pseudo[(b & 0xF0) >> 4]);
-                sb.Append(pseudo[b & 0x0F]);
+                sb.Append(b.ToString("X2"));
             }
 
             return sb.ToString();

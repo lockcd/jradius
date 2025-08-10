@@ -4,97 +4,118 @@ using System.Text;
 
 namespace JRadius.Core.Util
 {
-    public class MSCHAP
+    public static class MSCHAP
     {
-        // Note: This class is a port of the MSCHAP.java file.
-        // The logic must be ported carefully to ensure compatibility.
-
-        /// <summary>
-        /// Sets the parity bits on a 7-byte key to create an 8-byte DES key.
-        /// </summary>
-        private static void SetParityKey(byte[] key7, int offset, byte[] key8)
+        private static void ParityKey(byte[] szOut, byte[] szIn, int offset)
         {
             int cNext = 0;
             for (int i = 0; i < 7; i++)
             {
-                int cWorking = key7[i + offset] & 0xFF;
-                key8[i] = (byte)(((cWorking >> i) | cNext | 1) & 0xFF);
-                cWorking = key7[i + offset] & 0xFF;
+                int cWorking = 0xFF & szIn[i + offset];
+                szOut[i] = (byte)(((cWorking >> i) | cNext | 1) & 0xff);
+                cWorking = 0xFF & szIn[i + offset];
                 cNext = (cWorking << (7 - i));
             }
-            key8[7] = (byte)((cNext | 1) & 0xFF);
+            szOut[i] = (byte)(cNext | 1);
         }
 
-        /// <summary>
-        /// Encrypts an 8-byte block with a 7-byte key using DES.
-        /// </summary>
-        private static void DesEncrypt(byte[] clear, byte[] key7, byte[] cipher)
+        private static byte[] Unicode(byte[] input)
         {
-            byte[] key8 = new byte[8];
-            SetParityKey(key7, 0, key8);
+            return Encoding.Unicode.GetBytes(Encoding.ASCII.GetString(input));
+        }
 
+        private static byte[] ChallengeHash(byte[] peerChallenge, byte[] authenticatorChallenge, byte[] userName)
+        {
+            var challenge = new byte[8];
+            using (var sha1 = SHA1.Create())
+            {
+                var buffer = new byte[peerChallenge.Length + authenticatorChallenge.Length + userName.Length];
+                Buffer.BlockCopy(peerChallenge, 0, buffer, 0, peerChallenge.Length);
+                Buffer.BlockCopy(authenticatorChallenge, 0, buffer, peerChallenge.Length, authenticatorChallenge.Length);
+                Buffer.BlockCopy(userName, 0, buffer, peerChallenge.Length + authenticatorChallenge.Length, userName.Length);
+                var hash = sha1.ComputeHash(buffer);
+                Buffer.BlockCopy(hash, 0, challenge, 0, 8);
+            }
+            return challenge;
+        }
+
+        private static byte[] NtPasswordHash(byte[] password)
+        {
+            using (var md4 = new MD4())
+            {
+                return md4.ComputeHash(Unicode(password));
+            }
+        }
+
+        private static void DesEncrypt(byte[] clear, int clearOffset, byte[] key, int keyOffset, byte[] cypher, int cypherOffset)
+        {
+            var szParityKey = new byte[8];
+            ParityKey(szParityKey, key, keyOffset);
             using (var des = DES.Create())
             {
-                des.Key = key8;
+                des.Key = szParityKey;
                 des.Mode = CipherMode.CBC;
                 des.Padding = PaddingMode.None;
-                des.IV = new byte[8]; // Zero IV
-
+                des.IV = new byte[8];
                 using (var encryptor = des.CreateEncryptor())
                 {
-                    // The Java code seems to encrypt the whole block.
-                    // .NET's TransformBlock can be tricky. Using DoFinal equivalent.
-                    byte[] encrypted = encryptor.TransformFinalBlock(clear, 0, clear.Length);
-                    Array.Copy(encrypted, 0, cipher, 0, encrypted.Length);
+                    var output = encryptor.TransformFinalBlock(clear, clearOffset, clear.Length - clearOffset);
+                    Buffer.BlockCopy(output, 0, cypher, cypherOffset, output.Length);
                 }
             }
         }
-        
-        /// <summary>
-        /// Computes the NT Password Hash, which is the MD4 hash of the password.
-        /// </summary>
-        private static byte[] NtPasswordHash(string password)
+
+        private static byte[] ChallengeResponse(byte[] challenge, byte[] passwordHash)
         {
-            // MD4 is obsolete and not included in .NET's standard libraries.
-            // A custom implementation is required to match the Java code.
-            // This is a critical missing piece.
-            // For now, returning a dummy value.
-            Console.Error.WriteLine("CRITICAL: MD4 hash algorithm is not implemented.");
-            return new byte[16]; 
+            var response = new byte[24];
+            var zPasswordHash = new byte[21];
+            Buffer.BlockCopy(passwordHash, 0, zPasswordHash, 0, 16);
+            DesEncrypt(challenge, 0, zPasswordHash, 0, response, 0);
+            DesEncrypt(challenge, 0, zPasswordHash, 7, response, 8);
+            DesEncrypt(challenge, 0, zPasswordHash, 14, response, 16);
+            return response;
         }
 
-        /// <summary>
-        /// Calculates the NT Challenge-Response for MS-CHAP.
-        /// </summary>
-        public static byte[] NtChallengeResponse(byte[] challenge, string password)
+        private static byte[] NtChallengeResponse(byte[] challenge, byte[] password)
         {
-            byte[] passwordHash = NtPasswordHash(password);
-            
-            // The full password hash is 16 bytes. A 21-byte version with 5 zero-bytes
-            // appended is used for the challenge-response.
-            byte[] zPasswordHash = new byte[21];
-            Array.Copy(passwordHash, 0, zPasswordHash, 0, 16);
+            var passwordHash = NtPasswordHash(password);
+            return ChallengeResponse(challenge, passwordHash);
+        }
 
-            byte[] response = new byte[24];
-            
-            // Encrypt the 8-byte challenge with three different 7-byte keys derived from the hash.
-            byte[] key1 = new byte[7];
-            Array.Copy(zPasswordHash, 0, key1, 0, 7);
-            DesEncrypt(challenge, key1, response); // First 8 bytes of response
+        private static byte[] GenerateNTResponse(byte[] authenticatorChallenge, byte[] peerChallenge, byte[] userName, byte[] password)
+        {
+            var challenge = ChallengeHash(peerChallenge, authenticatorChallenge, userName);
+            var passwordHash = NtPasswordHash(password);
+            return ChallengeResponse(challenge, passwordHash);
+        }
 
-            byte[] key2 = new byte[7];
-            Array.Copy(zPasswordHash, 7, key2, 0, 7);
-            byte[] tempResponse2 = new byte[8];
-            DesEncrypt(challenge, key2, tempResponse2);
-            Array.Copy(tempResponse2, 0, response, 8, 8); // Next 8 bytes
-
-            byte[] key3 = new byte[7];
-            Array.Copy(zPasswordHash, 14, key3, 0, 7);
-            byte[] tempResponse3 = new byte[8];
-            DesEncrypt(challenge, key3, tempResponse3);
-            Array.Copy(tempResponse3, 0, response, 16, 8); // Final 8 bytes
-            
+        public static byte[] DoMSCHAPv1(byte[] password, byte[] authChallenge)
+        {
+            var response = new byte[50];
+            var ntResponse = NtChallengeResponse(authChallenge, password);
+            Buffer.BlockCopy(ntResponse, 0, response, 26, 24);
+            response[1] = 0x01;
             return response;
+        }
+
+        public static byte[] DoMSCHAPv2(byte[] userName, byte[] password, byte[] authChallenge)
+        {
+            var response = new byte[50];
+            var peerChallenge = RadiusRandom.GetBytes(16);
+            var ntResponse = GenerateNTResponse(authChallenge, peerChallenge, userName, password);
+            Buffer.BlockCopy(peerChallenge, 0, response, 2, 16);
+            Buffer.BlockCopy(ntResponse, 0, response, 26, 24);
+            return response;
+        }
+
+        public static bool VerifyMSCHAPv2(byte[] userName, byte[] password, byte[] challenge, byte[] response)
+        {
+            var peerChallenge = new byte[16];
+            var sentNtResponse = new byte[24];
+            Buffer.BlockCopy(response, 2, peerChallenge, 0, 16);
+            Buffer.BlockCopy(response, 26, sentNtResponse, 0, 24);
+            var ntResponse = GenerateNTResponse(challenge, peerChallenge, userName, password);
+            return ntResponse.AsSpan().SequenceEqual(sentNtResponse);
         }
     }
 }

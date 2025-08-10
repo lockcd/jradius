@@ -1,6 +1,7 @@
-using JRadius.Core.Server;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
+using net.jradius.core.server;
+using net.jradius.core.session;
 using System;
 using System.Collections.Generic;
 
@@ -131,8 +132,8 @@ namespace JRadius.Core.Session
         {
             if (session != null)
             {
-                _sessionCache.Remove(session.GetJRadiusKey());
-                _sessionCache.Remove(session.GetSessionKey());
+                _sessionCache.Remove(session.JRadiusKey);
+                _sessionCache.Remove(session.SessionKey);
             }
         }
     }

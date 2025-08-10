@@ -9,6 +9,7 @@ using Microsoft.Extensions.Logging;
 using net.jradius.core.config;
 using net.jradius.core.handler;
 using net.jradius.core.session;
+using JRadius.Core.Config;
 
 namespace net.jradius.core.server
 {

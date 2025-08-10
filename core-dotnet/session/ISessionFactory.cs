@@ -1,5 +1,6 @@
-using JRadius.Core.Log;
-using JRadius.Core.Server;
+using net.jradius.core.log;
+using net.jradius.core.server;
+using net.jradius.core.session;
 using System.Xml.Linq;
 
 namespace JRadius.Core.Session

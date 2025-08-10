@@ -1,5 +1,6 @@
 using System;
 using System.Text;
+using JRadius.Core.Packet.Attribute;
 using net.jradius.core.packet.attribute;
 using net.jradius.core.packet.attribute.value;
 

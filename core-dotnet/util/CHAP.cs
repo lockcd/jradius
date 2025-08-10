@@ -1,12 +1,16 @@
+using System.Linq;
+using System.Security.Cryptography;
+
 namespace JRadius.Core.Util
 {
-    public class CHAP
+    public static class CHAP
     {
         public static byte[] ChapMD5(byte id, byte[] password, byte[] challenge)
         {
-            if (password == null || challenge == null)
+            using (var md5 = MD5.Create())
             {
-                return null;
+                var idBytes = new byte[] { id };
+                return md5.ComputeHash(idBytes.Concat(password).Concat(challenge).ToArray());
             }
 
             // The Java version updates the digest with each part separately.
@@ -22,15 +26,9 @@ namespace JRadius.Core.Util
 
         public static byte[] ChapResponse(byte id, byte[] password, byte[] challenge)
         {
-            byte[] hash = ChapMD5(id, password, challenge);
-            if (hash == null)
-            {
-                return null;
-            }
-
-            byte[] response = new byte[1 + hash.Length];
+            var response = new byte[17];
             response[0] = id;
-            System.Buffer.BlockCopy(hash, 0, response, 1, hash.Length);
+            System.Array.Copy(ChapMD5(id, password, challenge), 0, response, 1, 16);
             return response;
         }
     }
