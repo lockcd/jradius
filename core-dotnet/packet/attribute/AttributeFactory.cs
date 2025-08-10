@@ -118,8 +118,7 @@ namespace JRadius.Core.Packet.Attribute
                         return (RadiusAttribute)Activator.CreateInstance(c);
                     }
                 }
-                // TODO: return new Attr_UnknownVSAttribute(vendor, type);
-                return null;
+                return new Attr_UnknownVSAttribute(vendor, type);
             }
             else
             {
@@ -127,8 +126,7 @@ namespace JRadius.Core.Packet.Attribute
                 {
                     return (RadiusAttribute)Activator.CreateInstance(c);
                 }
-                // TODO: return new Attr_UnknownAttribute(type);
-                return null;
+                return new Attr_UnknownAttribute(type);
             }
         }
 
