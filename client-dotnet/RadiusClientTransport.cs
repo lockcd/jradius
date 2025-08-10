@@ -56,7 +56,14 @@ namespace JRadius.Core.Client
                 }
                 catch (SocketException e)
                 {
-                    // TODO: Log warning
+                    if (e.SocketErrorCode == SocketError.TimedOut)
+                    {
+                        // TODO: Log warning
+                    }
+                    else
+                    {
+                        // TODO: Log error
+                    }
                 }
                 catch (Exception e)
                 {

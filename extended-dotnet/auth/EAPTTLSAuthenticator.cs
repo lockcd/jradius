@@ -27,7 +27,7 @@ namespace JRadius.Extended.Auth
             _tunnelAuth = RadiusClient.GetAuthProtocol(GetInnerProtocol());
             if (_tunnelAuth == null || _tunnelAuth is MSCHAPv2Authenticator || _tunnelAuth is MSCHAPv1Authenticator || _tunnelAuth is CHAPAuthenticator)
             {
-                throw new System.Exception("You can not currently use " + _tunnelAuth.GetAuthName() + " within a TLS Tunnel because of limitations in Java 1.5.");
+                throw new System.Exception("You can not currently use " + _tunnelAuth.GetAuthName() + " within a TLS Tunnel because of limitations in .NET");
             }
         }
 
@@ -51,7 +51,15 @@ namespace JRadius.Extended.Auth
             base.SetupRequest(client, p);
             _tunnelRequest = new AccessRequest(_tunneledAttributes);
             var attrs = _tunnelRequest.GetAttributes();
-            // TODO: Implement attribute copying
+            if (attrs.Get(1, true) == null) // User-Name
+            {
+                // TODO: Implement attribute copying
+                // attrs.Add(AttributeFactory.CopyAttribute(_username, false));
+            }
+            if (attrs.Get(2, true) == null) // User-Password
+            {
+                // attrs.Add(AttributeFactory.CopyAttribute(_password, false));
+            }
             _tunnelAuth.SetupRequest(client, _tunnelRequest);
             if (!(_tunnelAuth is PAPAuthenticator))
             {

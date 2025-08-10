@@ -1,5 +1,6 @@
 using JRadius.Core.Packet;
 using System;
+using System.IO;
 using System.Net;
 using System.Net.Sockets;
 
@@ -21,6 +22,7 @@ namespace JRadius.Core.Client
         public UdpClientTransport(UdpClient socket)
         {
             _socket = socket;
+            RemoteInetAddress = ((IPEndPoint)_socket.Client.RemoteEndPoint).Address;
         }
 
         public override void Close()
@@ -36,17 +38,23 @@ namespace JRadius.Core.Client
                 // TODO: Log retry
             }
 
-            // TODO: Implement packet packing
-            var buffer = new byte[4096];
-            _socket.Send(buffer, buffer.Length, new IPEndPoint(RemoteInetAddress, port));
+            var buffer = new MemoryStream(4096);
+            _format.PackPacket(req, SharedSecret, buffer, true);
+            _socket.Send(buffer.ToArray(), (int)buffer.Position, new IPEndPoint(RemoteInetAddress, port));
         }
 
         protected override RadiusResponse Receive(RadiusRequest req)
         {
             var remoteEP = new IPEndPoint(IPAddress.Any, 0);
             var replyBytes = _socket.Receive(ref remoteEP);
-            // TODO: Implement packet parsing
-            return null;
+            var replyPacket = PacketFactory.Parse(new UdpReceiveResult(replyBytes, remoteEP), req.IsRecyclable());
+
+            if (!(replyPacket is RadiusResponse))
+            {
+                throw new Exception("Received something other than a RADIUS Response to a Request");
+            }
+
+            return (RadiusResponse)replyPacket;
         }
 
         public override void SetSocketTimeout(int timeout)
