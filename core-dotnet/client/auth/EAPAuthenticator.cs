@@ -1,7 +1,9 @@
 using JRadius.Core.Packet;
 using JRadius.Core.Packet.Attribute;
+using JRadius.Dictionary;
 using System;
 using System.IO;
+using System.Net;
 
 namespace JRadius.Core.Client.Auth
 {

@@ -1,5 +1,6 @@
 using JRadius.Core.Config;
 using JRadius.Core.Server;
+using net.jradius.core.server;
 
 namespace JRadius.Core.Handler.Chain
 {

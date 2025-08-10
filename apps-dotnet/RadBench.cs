@@ -2,11 +2,8 @@ using JRadius.Core.Client;
 using JRadius.Core.Client.Auth;
 using JRadius.Core.Packet;
 using JRadius.Core.Packet.Attribute;
-using System;
-using System.Collections.Generic;
-using System.IO;
 using System.Net;
-using System.Threading;
+
 
 namespace JRadius.Apps
 {

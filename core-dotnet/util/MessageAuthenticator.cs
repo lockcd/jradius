@@ -1,5 +1,6 @@
 using JRadius.Core.Packet;
 using JRadius.Core.Packet.Attribute;
+using JRadius.Dictionary;
 using System.IO;
 using System.Linq;
 using System.Text;

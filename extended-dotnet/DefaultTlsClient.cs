@@ -6,9 +6,9 @@ namespace JRadius.Extended.Tls
 {
     public class DefaultTlsClient : TlsClient
     {
-        private CertificateVerifyer verifyer;
+        private ICertificateVerifyer verifyer;
 
-        public DefaultTlsClient(CertificateVerifyer verifyer)
+        public DefaultTlsClient(ICertificateVerifyer verifyer)
         {
             this.verifyer = verifyer;
         }

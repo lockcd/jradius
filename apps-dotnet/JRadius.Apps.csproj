@@ -6,4 +6,9 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\client-dotnet\JRadius.Client.csproj" />
+    <ProjectReference Include="..\core-dotnet\JRadius.Core.csproj" />
+  </ItemGroup>
+
 </Project>

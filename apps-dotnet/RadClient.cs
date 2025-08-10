@@ -2,7 +2,7 @@ using JRadius.Core.Client;
 using JRadius.Core.Client.Auth;
 using JRadius.Core.Packet;
 using JRadius.Core.Packet.Attribute;
-using JRadius.Core.Standard;
+//using JRadius.Core.Standard;
 using System;
 using System.Collections.Generic;
 using System.IO;

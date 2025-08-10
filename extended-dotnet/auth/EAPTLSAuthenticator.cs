@@ -42,7 +42,7 @@ namespace JRadius.Extended.Auth
             Init();
         }
 
-        public void Init()
+        public virtual void Init()
         {
             try
             {

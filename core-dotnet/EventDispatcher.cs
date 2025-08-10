@@ -1,10 +1,10 @@
+using JRadius.Core.Handler.Chain;
+using Microsoft.Extensions.Logging;
+using net.jradius.core.server.@event;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
-using net.jradius.core.handler;
-using net.jradius.core.server.@event;
 
 namespace net.jradius.core.server
 {
@@ -14,7 +14,7 @@ namespace net.jradius.core.server
         private readonly BlockingCollection<ServerEvent> _eventQueue = new BlockingCollection<ServerEvent>();
         private Task _task;
         private readonly CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
-        public List<JRCommand> EventHandlers { get; set; }
+        public List<IJRCommand> EventHandlers { get; set; }
 
         public EventDispatcher(ILogger<EventDispatcher> logger)
         {

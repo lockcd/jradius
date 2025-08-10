@@ -42,7 +42,7 @@ namespace JRadius.Core.Packet
                 PackHeader(buffer, packet, buffer.ToArray(), (int)initialPosition + RadiusPacket.RADIUS_HEADER_LENGTH, (int)attributesLength, sharedSecret);
                 buffer.Position = totalLength + initialPosition;
             }
-            catch (Exception e)
+            catch (System.Exception e)
             {
                 // TODO: Log warning
             }

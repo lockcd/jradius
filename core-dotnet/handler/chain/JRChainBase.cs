@@ -1,6 +1,7 @@
 using JRadius.Core.Config;
 using JRadius.Core.Server;
 using Microsoft.Extensions.Logging;
+using net.jradius.core.server;
 
 namespace JRadius.Core.Handler.Chain
 {
@@ -23,9 +24,11 @@ namespace JRadius.Core.Handler.Chain
 
         public bool DoesHandle(JRadiusEvent @event)
         {
-            if (_config == null) return true;
-            return (_config.HandlesSender(@event.GetSender()) &&
-                    _config.HandlesType(@event.GetTypeString()));
+            // TODO: Implement JRadiusEvent
+            //if (_config == null) return true;
+            //return (_config.HandlesSender(@event.GetSender()) &&
+            //        _config.HandlesType(@event.GetTypeString()));
+            return false;
         }
 
         public override bool Execute(IContext context)

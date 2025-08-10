@@ -12,5 +12,6 @@ namespace JRadius.Core.Util
                 return hmac.ComputeHash(data, offset, length);
             }
         }
+
     }
 }

@@ -51,7 +51,8 @@ namespace JRadius.Extended.Auth
             }
             else
             {
-                output = _tunnelAuth.EapResponse(EAP_IDENTITY, 0, GetUsername());
+                // TODO: Implement _tunnelAuth.EapResponse(EAP_IDENTITY, 0, GetUsername())
+                //output = _tunnelAuth.EapResponse(EAP_IDENTITY, 0, GetUsername());
             }
             // TODO: PutAppBuffer(output);
             return true;

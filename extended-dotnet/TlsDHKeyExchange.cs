@@ -18,7 +18,7 @@ namespace JRadius.Extended.Tls
         private static readonly BigInteger TWO = BigInteger.Two;
 
         private readonly TlsProtocolHandler _handler;
-        private readonly CertificateVerifyer _verifyer;
+        private readonly ICertificateVerifyer _verifyer;
         private readonly short _keyExchange;
         private readonly ITlsSigner _tlsSigner;
 

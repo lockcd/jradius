@@ -30,7 +30,7 @@ namespace JRadius.Core.Packet
             }
         }
 
-        protected class AttributeParseContext
+        public class AttributeParseContext
         {
             public long AttributeType = 0;
             public long AttributeLength = 0;
@@ -53,7 +53,7 @@ namespace JRadius.Core.Packet
                 {
                     UnpackAttributeHeader(buffer, ctx);
                 }
-                catch (Exception e)
+                catch (System.Exception e)
                 {
                     // TODO: Log error
                     return;

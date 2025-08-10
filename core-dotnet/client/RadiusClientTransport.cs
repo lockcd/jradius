@@ -37,9 +37,9 @@ namespace JRadius.Core.Client
                 {
                     MessageAuthenticator.GenerateRequestMessageAuthenticator(p, SharedSecret);
                 }
-                catch (Exception e)
+                catch (System.Exception e)
                 {
-                    throw new Exception("Error generating message authenticator", e);
+                    throw new System.Exception("Error generating message authenticator", e);
                 }
             }
 
@@ -65,7 +65,7 @@ namespace JRadius.Core.Client
                         // TODO: Log error
                     }
                 }
-                catch (Exception e)
+                catch (System.Exception e)
                 {
                     // TODO: Log error
                 }
@@ -158,6 +158,11 @@ namespace JRadius.Core.Client
         public void SetStatusListener(ITransportStatusListener statusListener)
         {
             _statusListener = statusListener;
+        }
+
+        void IRadiusClientTransport.Send(RadiusRequest p, int attempt)
+        {
+            Send(p, attempt);
         }
     }
 }

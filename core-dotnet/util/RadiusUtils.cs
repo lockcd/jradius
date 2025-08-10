@@ -43,7 +43,7 @@ namespace JRadius.Core.Util
                 encryptedPass[i] = 0;
             }
 
-            using (var md5 = MD5.Create())
+            using (var md5 = System.Security.Cryptography.MD5.Create())
             {
                 var sharedSecretBytes = Encoding.UTF8.GetBytes(sharedSecret);
                 var bn = md5.ComputeHash(sharedSecretBytes.Concat(requestAuthenticator).ToArray());
@@ -73,7 +73,7 @@ namespace JRadius.Core.Util
 
         public static byte[] MakeRFC2865RequestAuthenticator(string sharedSecret)
         {
-            using (var md5 = MD5.Create())
+            using (var md5 = System.Security.Cryptography.MD5.Create())
             {
                 var requestAuthenticator = new byte[16];
                 using (var rng = RandomNumberGenerator.Create())
@@ -87,7 +87,7 @@ namespace JRadius.Core.Util
 
         public static byte[] MakeRFC2865ResponseAuthenticator(string sharedSecret, byte code, byte identifier, short length, byte[] requestAuthenticator, byte[] responseAttributeBytes, int responseAttributeLength)
         {
-            using (var md5 = MD5.Create())
+            using (var md5 = System.Security.Cryptography.MD5.Create())
             {
                 var buffer = new byte[4 + requestAuthenticator.Length + responseAttributeLength + sharedSecret.Length];
                 buffer[0] = code;
@@ -103,7 +103,7 @@ namespace JRadius.Core.Util
 
         public static byte[] MakeRFC2866RequestAuthenticator(string sharedSecret, byte code, byte identifier, int length, byte[] requestAttributes, int attributesOffset, int attributesLength)
         {
-            using (var md5 = MD5.Create())
+            using (var md5 = System.Security.Cryptography.MD5.Create())
             {
                 var requestAuthenticator = new byte[16];
                 var buffer = new byte[4 + requestAuthenticator.Length + attributesLength + sharedSecret.Length];

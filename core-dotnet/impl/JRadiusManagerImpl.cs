@@ -1,5 +1,7 @@
 using JRadius.Core;
+using JRadius.Core.Server;
 using Microsoft.Extensions.Logging;
+using net.jradius.core.server;
 using System;
 using System.IO;
 
@@ -39,7 +41,7 @@ namespace JRadius.Core.Impl
             {
                 var message = "JRadiusManager: Missing settings filename ['configFile' property not specified correctly].";
                 _logger.LogError(message);
-                throw new Exception(message);
+                throw new System.Exception(message);
             }
 
             // In C#, we can use Assembly.GetExecutingAssembly().GetManifestResourceStream for embedded resources
@@ -56,7 +58,7 @@ namespace JRadius.Core.Impl
             {
                 var message = $"File '{_configFile}' not found.";
                 _logger.LogError(message);
-                throw new Exception(message);
+                throw new System.Exception(message);
             }
 
             if (_jRadiusServer == null)

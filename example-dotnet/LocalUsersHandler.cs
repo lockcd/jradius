@@ -3,6 +3,7 @@ using JRadius.Core.Handler;
 using JRadius.Core.Packet;
 using JRadius.Core.Packet.Attribute;
 using JRadius.Core.Server;
+using net.jradius.core.server;
 using System.Collections.Generic;
 using System.IO;
 using System.Xml.Linq;
@@ -71,45 +72,48 @@ namespace JRadius.Example
 
         public override bool Handle(JRadiusRequest jRequest)
         {
-            try
-            {
-                var type = jRequest.Type;
-                var ci = jRequest.GetConfigItems();
-                var req = jRequest.GetRequestPacket();
-                var rep = jRequest.GetReplyPacket();
+            // TODO: Implement JRadiusRequest
+            //try
+            //{
+            //    var type = jRequest.Type;
+            //    var ci = jRequest.GetConfigItems();
+            //    var req = jRequest.GetRequestPacket();
+            //    var rep = jRequest.GetReplyPacket();
 
-                var username = req.GetAttributeValue(1); // User-Name
-                if (username == null)
-                {
-                    return false;
-                }
+            //    var username = req.GetAttributeValue(1); // User-Name
+            //    if (username == null)
+            //    {
+            //        return false;
+            //    }
 
-                if (!_users.TryGetValue(username.ToString(), out var u))
-                {
-                    // Unknown username
-                    return false;
-                }
+            //    if (!_users.TryGetValue(username.ToString(), out var u))
+            //    {
+            //        // Unknown username
+            //        return false;
+            //    }
 
-                switch (type)
-                {
-                    case JRadiusServer.JRADIUS_AUTHORIZE:
-                        // TODO: Add attributes to the config items
-                        break;
-                    case JRadiusServer.JRADIUS_POST_AUTH:
-                        if (rep is AccessAccept)
-                        {
-                            // TODO: Add attributes to the reply
-                        }
-                        break;
-                }
-            }
-            catch (System.Exception)
-            {
-                // TODO: Log exception
-            }
+            //    switch (type)
+            //    {
+            //        case JRadiusServer.JRADIUS_AUTHORIZE:
+            //            // TODO: Add attributes to the config items
+            //            break;
+            //        case JRadiusServer.JRADIUS_POST_AUTH:
+            //            if (rep is AccessAccept)
+            //            {
+            //                // TODO: Add attributes to the reply
+            //            }
+            //            break;
+            //    }
+            //}
+            //catch (System.Exception)
+            //{
+            //    // TODO: Log exception
+            //}
 
-            jRequest.SetReturnValue(JRadiusServer.RLM_MODULE_UPDATED);
+            //jRequest.SetReturnValue(JRadiusServer.RLM_MODULE_UPDATED);
             return false;
         }
+
+
     }
 }

@@ -1,6 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <ProjectReference Include="..\client-dotnet\JRadius.Client.csproj" />
     <ProjectReference Include="..\core-dotnet\JRadius.Core.csproj" />
     <ProjectReference Include="..\dictionary-dotnet\JRadius.Dictionary.csproj" />
     <ProjectReference Include="..\dictionary-min-dotnet\JRadius.Dictionary.Min.csproj" />

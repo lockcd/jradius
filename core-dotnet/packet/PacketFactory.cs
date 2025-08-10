@@ -28,7 +28,7 @@ namespace JRadius.Core.Packet
             {
                 rp = ParseUDP(buffer, pool);
             }
-            catch (Exception e)
+            catch (System.Exception e)
             {
                 // TODO: Log error
             }
@@ -52,7 +52,7 @@ namespace JRadius.Core.Packet
             }
             else
             {
-                throw new Exception($"bad radius code - {code}");
+                throw new System.Exception($"bad radius code - {code}");
             }
 
             var bAuthenticator = new byte[16];

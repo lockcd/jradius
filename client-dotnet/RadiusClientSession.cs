@@ -69,7 +69,7 @@ namespace JRadius.Core.Client
             Interlocked.Add(ref _packetsOut, l);
         }
 
-        public class RadiusClientSessionException : Exception
+        public class RadiusClientSessionException : System.Exception
         {
             public RadiusClientSessionException(string s)
                 : base(s)

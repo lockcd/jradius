@@ -37,7 +37,7 @@ namespace JRadius.Core.Packet.Attribute
                 var o = Activator.CreateInstance(clazz);
                 return LoadAttributeDictionary((IAttributeDictionary)o);
             }
-            catch (Exception e)
+            catch (System.Exception e)
             {
                 Console.WriteLine(e);
                 return false;
@@ -66,7 +66,7 @@ namespace JRadius.Core.Packet.Attribute
                     }
                     _vendorValueMap[id] = new VendorValue(c, typeMap, nameMap);
                 }
-                catch (Exception e)
+                catch (System.Exception e)
                 {
                     Console.WriteLine(e);
                 }

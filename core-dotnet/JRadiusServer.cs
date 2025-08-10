@@ -6,12 +6,13 @@ using System.Threading.Tasks;
 using System.Collections.Concurrent;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using net.jradius.core.config;
-using net.jradius.core.handler;
 using net.jradius.core.session;
 using JRadius.Core.Config;
+using net.jradius.core.server;
+using net.jradius.core;
+using JRadius.Core.Session;
 
-namespace net.jradius.core.server
+namespace JRadius.Core.Server
 {
     public class JRadiusServer : IDisposable
     {
@@ -108,13 +109,13 @@ namespace net.jradius.core.server
 
         private void CreateProcessorsWithConfigAndQueue(ListenerConfigurationItem listenerConfig, BlockingCollection<ListenerRequest> queue)
         {
-            for (var j = 0; j < listenerConfig.NumberOfThreads; j++)
+            for (var j = 0; j < listenerConfig.GetNumberOfThreads(); j++)
             {
-                var processorType = Type.GetType(listenerConfig.ProcessorClassName);
+                var processorType = Type.GetType(listenerConfig.GetProcessorClassName());
                 var processor = (Processor)_serviceProvider.GetService(processorType);
                 if (processor == null)
                 {
-                    throw new InvalidOperationException($"Service not found for type {listenerConfig.ProcessorClassName}");
+                    throw new InvalidOperationException($"Service not found for type {listenerConfig.GetProcessorClassName()}");
                 }
                 processor.RequestQueue = queue;
                 _logger.LogInformation($"Created processor {processor.Name}");
@@ -127,7 +128,7 @@ namespace net.jradius.core.server
 
         private void SetPacketHandlersForProcessor(ListenerConfigurationItem cfg, Processor processor)
         {
-            var requestHandlers = cfg.RequestHandlers;
+            var requestHandlers = cfg.GetRequestHandlers();
             if (requestHandlers == null)
             {
                 _logger.LogDebug("No packet handlers are configured, maybe using chains instead.");
@@ -144,7 +145,7 @@ namespace net.jradius.core.server
 
         private void SetEventHandlersForProcessor(ListenerConfigurationItem cfg, EventDispatcher dispatcher)
         {
-            var eventHandlers = cfg.EventHandlers;
+            var eventHandlers = cfg.GetEventHandlers();
             if (eventHandlers == null)
             {
                 return;
@@ -177,6 +178,11 @@ namespace net.jradius.core.server
         {
             Stop();
             _cancellationTokenSource.Dispose();
+        }
+
+        internal bool IsRunning()
+        {
+            return _running;
         }
     }
 }

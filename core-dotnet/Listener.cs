@@ -1,9 +1,9 @@
 using System.Collections.Concurrent;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using net.jradius.core.config;
+using JRadius.Core.Config;
 
-namespace net.jradius.core.server
+namespace JRadius.Core.Server
 {
     public abstract class Listener
     {

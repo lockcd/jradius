@@ -1,10 +1,11 @@
+using JRadius.Core.Handler.Chain;
+using JRadius.Core.Server;
+using Microsoft.Extensions.Logging;
+using net.jradius.core.server;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
-using net.jradius.core.handler;
-using net.jradius.core.server;
 
 namespace net.jradius.core
 {
@@ -12,7 +13,7 @@ namespace net.jradius.core
     {
         public string Name { get; set; }
         public BlockingCollection<ListenerRequest> RequestQueue { get; set; }
-        public List<JRCommand> RequestHandlers { get; set; }
+        public List<IJRCommand> RequestHandlers { get; set; }
         public EventDispatcher EventDispatcher { get; set; }
 
         protected readonly ILogger<Processor> _logger;

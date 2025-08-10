@@ -2,6 +2,7 @@ using JRadius.Core.Handler;
 using JRadius.Core.Packet;
 using JRadius.Core.Packet.Attribute;
 using JRadius.Core.Server;
+using net.jradius.core.server;
 
 namespace JRadius.Example
 {

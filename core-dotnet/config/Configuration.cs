@@ -74,7 +74,7 @@ namespace JRadius.Core.Config
                             _factory.AddCatalog(catalogURL, catalog);
                         }
                     }
-                    catch (Exception e)
+                    catch (System.Exception e)
                     {
                         _logger.LogError(e, $"Error loading catalog chain: {catalogURL}");
                     }
@@ -168,7 +168,7 @@ namespace JRadius.Core.Config
                         var manager = (JRadiusSessionManager)GetBean(clazz);
                         JRadiusSessionManager.SetManager(requester, manager);
                     }
-                    catch (Exception e)
+                    catch (System.Exception e)
                     {
                         _logger.LogError(e, e.Message);
                     }
@@ -182,7 +182,7 @@ namespace JRadius.Core.Config
                         var provider = (ISessionKeyProvider)GetBean(keyProvider);
                         JRadiusSessionManager.GetManager(requester).SetSessionKeyProvider(requester, provider);
                     }
-                    catch (Exception e)
+                    catch (System.Exception e)
                     {
                         _logger.LogError(e, e.Message);
                     }
@@ -197,7 +197,7 @@ namespace JRadius.Core.Config
                         factory.SetConfig(node);
                         JRadiusSessionManager.GetManager(requester).SetSessionFactory(requester, factory);
                     }
-                    catch (Exception e)
+                    catch (System.Exception e)
                     {
                         _logger.LogError(e, e.Message);
                     }
@@ -223,7 +223,7 @@ namespace JRadius.Core.Config
                         factory.SetConfig(node);
                         JRadiusRealmManager.GetManager().SetRealmFactory(requester, factory);
                     }
-                    catch (Exception e)
+                    catch (System.Exception e)
                     {
                         _logger.LogError(e, e.Message);
                     }

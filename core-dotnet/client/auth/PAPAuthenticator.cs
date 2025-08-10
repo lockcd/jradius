@@ -1,6 +1,7 @@
 using JRadius.Core.Packet;
 using JRadius.Core.Packet.Attribute;
 using JRadius.Core.Util;
+using JRadius.Dictionary;
 using System;
 using System.Linq;
 
@@ -19,7 +20,7 @@ namespace JRadius.Core.Client.Auth
         {
             if (_password == null)
             {
-                throw new Exception("no password given");
+                throw new System.Exception("no password given");
             }
 
             p.RemoveAttribute(_password);

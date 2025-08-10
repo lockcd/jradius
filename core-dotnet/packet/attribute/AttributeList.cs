@@ -1,7 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-
 namespace JRadius.Core.Packet.Attribute
 {
     public class AttributeList
@@ -58,29 +54,30 @@ namespace JRadius.Core.Packet.Attribute
 
         public void Add(RadiusAttribute a, bool overwrite)
         {
-            if (a is SubAttribute subAttribute)
-            {
-                try
-                {
-                    var parentType = subAttribute.ParentClass;
-                    var pAttribute = (RadiusAttribute)Get(parentType.GetProperty("FormattedType", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public).GetValue(null, null), true);
+            // TODO: Implement SubAttribute and VSAWithSubAttributes
+            //if (a is SubAttribute subAttribute)
+            //{
+            //    try
+            //    {
+            //        var parentType = subAttribute.ParentClass;
+            //        var pAttribute = (RadiusAttribute)Get(parentType.GetProperty("FormattedType", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public).GetValue(null, null), true);
 
-                    if (pAttribute == null)
-                    {
-                        pAttribute = (RadiusAttribute)Activator.CreateInstance(parentType);
-                        Add(pAttribute);
-                    }
-                    ((VSAWithSubAttributes)pAttribute).GetSubAttributes()._Add(a, false);
-                }
-                catch (Exception e)
-                {
-                    Console.WriteLine(e);
-                }
-            }
-            else
-            {
-                _Add(a, overwrite);
-            }
+            //        if (pAttribute == null)
+            //        {
+            //            pAttribute = (RadiusAttribute)Activator.CreateInstance(parentType);
+            //            Add(pAttribute);
+            //        }
+            //        ((VSAWithSubAttributes)pAttribute).GetSubAttributes()._Add(a, false);
+            //    }
+            //    catch (System.Exception e)
+            //    {
+            //        Console.WriteLine(e);
+            //    }
+            //}
+            //else
+            //{
+            //    _Add(a, overwrite);
+            //}
         }
 
         public void Remove(RadiusAttribute a)
@@ -146,6 +143,16 @@ namespace JRadius.Core.Packet.Attribute
                 return o;
             }
             return null;
+        }
+
+        public RadiusAttribute Get(long type)
+        {
+            return (RadiusAttribute)Get(type, true);
+        }
+
+        public RadiusAttribute[] GetArray(long type)
+        { 
+            return ((List<RadiusAttribute>)Get(type, false)).ToArray();
         }
 
         public List<RadiusAttribute> GetAttributeList()

@@ -1,4 +1,4 @@
-using net.jradius.core.packet;
+using JRadius.Core.Packet;
 
 namespace net.jradius.core.server
 {

@@ -51,7 +51,7 @@ namespace JRadius.Core.Client
 
             if (!(replyPacket is RadiusResponse))
             {
-                throw new Exception("Received something other than a RADIUS Response to a Request");
+                throw new System.Exception("Received something other than a RADIUS Response to a Request");
             }
 
             return (RadiusResponse)replyPacket;

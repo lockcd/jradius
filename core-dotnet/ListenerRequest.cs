@@ -1,4 +1,4 @@
-namespace net.jradius.core.server
+namespace JRadius.Core.Server
 {
     public class ListenerRequest
     {

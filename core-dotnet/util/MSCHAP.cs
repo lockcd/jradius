@@ -9,7 +9,8 @@ namespace JRadius.Core.Util
         private static void ParityKey(byte[] szOut, byte[] szIn, int offset)
         {
             int cNext = 0;
-            for (int i = 0; i < 7; i++)
+            int i = 0;
+            for (i = 0; i < 7; i++)
             {
                 int cWorking = 0xFF & szIn[i + offset];
                 szOut[i] = (byte)(((cWorking >> i) | cNext | 1) & 0xff);
